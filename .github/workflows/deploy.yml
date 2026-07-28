@@ -1,0 +1,63 @@
+name: Deploiement GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  # Permet de relancer le deploiement manuellement depuis l'onglet Actions.
+  workflow_dispatch:
+
+# Droits necessaires au deploiement via GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un seul deploiement a la fois ; les executions en attente sont remplacees.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recuperer le depot
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Verifier les types
+        run: npx tsc -b
+
+      - name: Construire l'application
+        # Le base path est deduit du nom du depot : le projet reste deployable
+        # tel quel meme s'il est renomme ou forke.
+        run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+
+      - name: Preparer l'artefact Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploiement
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publier sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

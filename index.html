@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover : indispensable pour exploiter les safe-area-inset sur iPhone -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="description" content="Organise tes sorties, soirees, evenements, week-ends et voyages. 100% local." />
+
+    <title>Mes Aventures</title>
+
+    <!-- Theme / chrome iOS -->
+    <meta name="theme-color" content="#FAF5EE" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#FAF5EE" />
+    <meta name="color-scheme" content="light" />
+
+    <!-- Installation sur l'ecran d'accueil iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Aventures" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="mask-icon" href="./favicon.svg" color="#6B4A34" />
+  </head>
+  <body>
+    <div id="root">
+      <!-- Ecran d'attente affiche avant l'hydratation de React -->
+      <div class="boot-screen">
+        <div class="boot-screen__dot"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,90 @@
+/**
+ * Jetons de design — palette chaleureuse "carnet de voyage en cuir".
+ * Toute couleur, rayon, ombre ou espacement utilise ailleurs doit venir d'ici.
+ */
+
+:root {
+  /* --- Neutres chauds ------------------------------------------------ */
+  --c-cream: #faf5ee;
+  --c-off-white: #fffdf9;
+  --c-beige: #f2e9dd;
+  --c-sand: #e8dac6;
+  --c-taupe: #9a8574;
+  --c-taupe-dark: #7a6857;
+
+  /* --- Marron cuir (accent principal) -------------------------------- */
+  --c-leather: #6b4a34;
+  --c-leather-dark: #4e3524;
+  --c-leather-soft: #8c6a4f;
+  --c-brass: #d6b276;
+
+  /* --- Accents pastel discrets --------------------------------------- */
+  --c-sage: #bcd0b8;
+  --c-sky: #b6cdd2;
+  --c-blush: #ecc3b7;
+  --c-apricot: #f2cd9f;
+  --c-lavender: #cbc2dd;
+  --c-mint: #c4dbcd;
+
+  /* --- Texte ---------------------------------------------------------- */
+  --c-ink: #3b2e25;
+  --c-ink-soft: #7c6b5d;
+  --c-ink-faint: #a2907f;
+  --c-on-leather: #fdf8f1;
+
+  /* --- Etats ---------------------------------------------------------- */
+  --c-success: #5f7f5c;
+  --c-success-bg: #e9f1e6;
+  --c-danger: #a2523f;
+  --c-danger-bg: #f8e7e2;
+  --c-warning: #9a6a2f;
+  --c-warning-bg: #f9eeda;
+
+  /* --- Surfaces ------------------------------------------------------- */
+  --surface: var(--c-off-white);
+  --surface-sunken: var(--c-beige);
+  --page-bg: var(--c-cream);
+  --border-soft: rgba(107, 74, 52, 0.1);
+  --border-strong: rgba(107, 74, 52, 0.18);
+
+  /* --- Rayons --------------------------------------------------------- */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* --- Ombres legeres -------------------------------------------------- */
+  --shadow-xs: 0 1px 2px rgba(78, 53, 36, 0.05);
+  --shadow-sm: 0 2px 8px rgba(78, 53, 36, 0.06);
+  --shadow-md: 0 6px 18px rgba(78, 53, 36, 0.08);
+  --shadow-lg: 0 14px 34px rgba(78, 53, 36, 0.12);
+
+  /* --- Espacements ----------------------------------------------------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 40px;
+
+  /* Marge laterale de page : confortable, adaptee aux petits ecrans. */
+  --page-gutter: clamp(16px, 4.5vw, 24px);
+
+  /* --- Typographie ------------------------------------------------------ */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', Georgia,
+    serif;
+
+  /* --- Barre de navigation --------------------------------------------- */
+  --nav-height: 62px;
+  /* Hauteur totale reservee sous le contenu : barre + encoche + respiration. */
+  --nav-total: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + var(--s-3));
+
+  /* --- Divers ----------------------------------------------------------- */
+  --tap-target: 44px; /* minimum recommande par Apple */
+  --transition: 160ms ease;
+}

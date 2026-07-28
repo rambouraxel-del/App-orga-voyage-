@@ -1,0 +1,365 @@
+/* Briques d'interface reutilisables : cartes, boutons, badges, etats. */
+
+/* --- Carte --------------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--s-5);
+}
+
+.card--flat {
+  box-shadow: none;
+}
+
+.card--tinted {
+  background: linear-gradient(160deg, var(--c-off-white) 0%, var(--c-beige) 130%);
+}
+
+.card--interactive {
+  display: block;
+  width: 100%;
+  text-align: left;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.card--interactive:active {
+  transform: scale(0.985);
+  box-shadow: var(--shadow-xs);
+}
+
+/* --- Boutons -------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: var(--tap-target);
+  padding: 0 var(--s-5);
+  border-radius: var(--r-pill);
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: transform var(--transition), background-color var(--transition),
+    opacity var(--transition);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn--primary {
+  background: var(--c-leather);
+  color: var(--c-on-leather);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--primary:active:not(:disabled) {
+  background: var(--c-leather-dark);
+}
+
+.btn--secondary {
+  background: var(--c-beige);
+  color: var(--c-leather-dark);
+  border: 1px solid var(--border-soft);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--c-leather);
+  border: 1px solid var(--border-strong);
+}
+
+.btn--block {
+  display: flex;
+  width: 100%;
+}
+
+.btn__spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-pill);
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Badges / pastilles --------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: var(--c-beige);
+  color: var(--c-taupe-dark);
+  white-space: nowrap;
+}
+
+.badge--leather {
+  background: rgba(107, 74, 52, 0.12);
+  color: var(--c-leather-dark);
+}
+
+.badge--sage {
+  background: rgba(188, 208, 184, 0.4);
+  color: #4d6849;
+}
+
+.badge--sky {
+  background: rgba(182, 205, 210, 0.45);
+  color: #476067;
+}
+
+.badge--blush {
+  background: rgba(236, 195, 183, 0.45);
+  color: #8a5647;
+}
+
+.badge--apricot {
+  background: rgba(242, 205, 159, 0.5);
+  color: #8a6227;
+}
+
+.badge--lavender {
+  background: rgba(203, 194, 221, 0.45);
+  color: #5f5677;
+}
+
+/* --- Pastille d'icone ------------------------------------------------------ */
+
+.icon-chip {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: var(--c-beige);
+  color: var(--c-leather);
+}
+
+.icon-chip--sm {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+}
+
+.icon-chip--sage {
+  background: rgba(188, 208, 184, 0.45);
+}
+.icon-chip--sky {
+  background: rgba(182, 205, 210, 0.5);
+}
+.icon-chip--blush {
+  background: rgba(236, 195, 183, 0.45);
+}
+.icon-chip--apricot {
+  background: rgba(242, 205, 159, 0.5);
+}
+.icon-chip--lavender {
+  background: rgba(203, 194, 221, 0.45);
+}
+.icon-chip--mint {
+  background: rgba(196, 219, 205, 0.5);
+}
+
+/* --- Etats : chargement, vide, erreur -------------------------------------- */
+
+.state-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-7) var(--s-5);
+  text-align: center;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  color: var(--c-ink-soft);
+}
+
+.state-block__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--c-leather-dark);
+}
+
+.state-block__text {
+  font-size: 0.9rem;
+  max-width: 34ch;
+}
+
+.state-block--error {
+  background: var(--c-danger-bg);
+  border-style: solid;
+  border-color: rgba(162, 82, 63, 0.25);
+  color: #7d3e2f;
+}
+
+.state-block--error .state-block__title {
+  color: var(--c-danger);
+}
+
+/* --- Bandeau de message (feedback en ligne) --------------------------------- */
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+
+.alert__icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.alert--success {
+  background: var(--c-success-bg);
+  border-color: rgba(95, 127, 92, 0.28);
+  color: #3f5a3d;
+}
+
+.alert--error {
+  background: var(--c-danger-bg);
+  border-color: rgba(162, 82, 63, 0.28);
+  color: #7d3e2f;
+}
+
+.alert--info {
+  background: var(--c-beige);
+  border-color: var(--border-soft);
+  color: var(--c-taupe-dark);
+}
+
+/* --- Squelette de chargement ------------------------------------------------ */
+
+.skeleton {
+  border-radius: var(--r-lg);
+  background: linear-gradient(
+    100deg,
+    var(--c-beige) 30%,
+    var(--c-sand) 50%,
+    var(--c-beige) 70%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -30% 0;
+  }
+}
+
+/* --- Feuille de confirmation (modale bas d'ecran) ---------------------------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: var(--s-4);
+  padding-bottom: calc(var(--s-4) + env(safe-area-inset-bottom, 0px));
+  background: rgba(59, 46, 37, 0.38);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: fade-in 180ms ease;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  padding: var(--s-6) var(--s-5) var(--s-5);
+  box-shadow: var(--shadow-lg);
+  animation: slide-up 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sheet__title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--c-leather-dark);
+}
+
+.sheet__text {
+  margin-top: var(--s-3);
+  font-size: 0.92rem;
+  color: var(--c-ink-soft);
+  line-height: 1.5;
+}
+
+.sheet__summary {
+  margin-top: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  font-size: 0.88rem;
+  color: var(--c-taupe-dark);
+}
+
+.sheet__summary dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s-1) var(--s-3);
+}
+
+.sheet__summary dt {
+  color: var(--c-ink-soft);
+}
+
+.sheet__summary dd {
+  font-weight: 600;
+  color: var(--c-leather-dark);
+}
+
+.sheet__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin-top: var(--s-5);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+}

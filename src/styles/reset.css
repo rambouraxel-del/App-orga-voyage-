@@ -1,0 +1,96 @@
+/* Reset minimal, oriente mobile / Safari iOS. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%; /* evite le zoom auto du texte en rotation */
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  /* Empeche tout debordement horizontal, quel que soit le contenu. */
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Supprime le surlignage bleu au tap sur iOS. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+svg,
+picture {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  /* 16px minimum : evite le zoom automatique de Safari iOS sur les champs. */
+  font-size: 16px;
+  touch-action: manipulation;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px;
+  border-radius: 0; /* neutralise l'arrondi natif iOS */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.25;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-leather);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
