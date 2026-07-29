@@ -1,39 +1,71 @@
+import { Link } from 'react-router-dom'
+import { Icon } from '@/components/icons/Icon'
 import { Badge, IconChip } from '@/components/ui'
 import { EVENT_STATUS_TONES, EVENT_VISUALS } from '@/config/visuals'
-import { EVENT_STATUS_LABELS, EVENT_TYPE_LABELS, type AppEvent } from '@/models'
+import { EVENT_CATEGORY_LABELS, EVENT_STATUS_LABELS, type AppEvent } from '@/models'
+import { eventDetailPath } from '@/navigation/routes'
 import { formatDateRange, formatTime } from '@/utils/date'
-import { pluralize } from '@/utils/format'
+import { dayCount, isMultiDay, isOngoingEvent, isPastEvent } from '@/utils/eventRules'
 
 export interface EventCardProps {
   event: AppEvent
+  /** Masque la date (la vue liste l'affiche deja en en-tete de groupe). */
+  hideDate?: boolean
 }
 
-/** Carte d'evenement reutilisee par la liste et l'agenda. */
-export function EventCard({ event }: EventCardProps) {
-  const visual = EVENT_VISUALS[event.type]
+/** Carte d'evenement cliquable, menant a la fiche detaillee. */
+export function EventCard({ event, hideDate = false }: EventCardProps) {
+  const visual = EVENT_VISUALS[event.category]
+  const past = isPastEvent(event)
+  const ongoing = isOngoingEvent(event)
+  const multiDay = isMultiDay(event)
 
   return (
-    <article className="entity-card">
+    <Link
+      to={eventDetailPath(event.id)}
+      className={['entity-card', 'entity-card--link', past ? 'entity-card--past' : '']
+        .filter(Boolean)
+        .join(' ')}
+      aria-label={`Ouvrir ${event.title}`}
+    >
       <div className="entity-card__head">
         <IconChip icon={visual.icon} tone={visual.tone} />
         <div className="entity-card__heading">
           <h3 className="entity-card__title">{event.title}</h3>
           <p className="entity-card__subtitle">
-            {formatDateRange(event.startDate, event.endDate)} · {formatTime(event.startDate)}
+            {hideDate
+              ? event.allDay
+                ? 'Toute la journee'
+                : formatTime(event.startDate)
+              : `${formatDateRange(event.startDate, event.endDate ?? event.startDate)}${
+                  event.allDay ? '' : ` · ${formatTime(event.startDate)}`
+                }`}
           </p>
         </div>
+        <Icon name="chevron" size={17} className="entity-card__chevron" />
       </div>
 
-      {event.description ? <p className="entity-card__description">{event.description}</p> : null}
+      {event.location ? (
+        <p className="meta-row meta-row--compact">
+          <Icon name="localisation" size={16} className="meta-row__icon" />
+          <span className="meta-row__text">{event.location}</span>
+        </p>
+      ) : null}
 
       <div className="entity-card__footer">
-        <Badge tone={EVENT_STATUS_TONES[event.status]}>{EVENT_STATUS_LABELS[event.status]}</Badge>
-        <Badge>{EVENT_TYPE_LABELS[event.type]}</Badge>
-        {event.location ? <span className="text-muted">{event.location}</span> : null}
-        {typeof event.participants === 'number' ? (
-          <span className="text-faint">{pluralize(event.participants, 'participant')}</span>
+        <Badge tone={visual.tone === 'neutral' ? 'neutral' : 'leather'}>
+          {EVENT_CATEGORY_LABELS[event.category]}
+        </Badge>
+        {multiDay ? <Badge tone="apricot">{dayCount(event)} jours</Badge> : null}
+        {event.allDay ? <Badge tone="sky">Journee entiere</Badge> : null}
+        {ongoing ? <Badge tone="sage">En cours</Badge> : null}
+        {past ? <Badge>Passe</Badge> : null}
+        {event.status === 'annule' || event.status === 'termine' ? (
+          <Badge tone={EVENT_STATUS_TONES[event.status]}>
+            {EVENT_STATUS_LABELS[event.status]}
+          </Badge>
         ) : null}
       </div>
-    </article>
+    </Link>
   )
 }

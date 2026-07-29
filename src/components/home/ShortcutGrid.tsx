@@ -1,30 +1,23 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { IconChip } from '@/components/ui'
-import { SHORTCUTS, type Shortcut } from '@/config/shortcuts'
+import { SHORTCUTS } from '@/config/shortcuts'
 
-export interface ShortcutGridProps {
-  /** Appele quand la rubrique n'existe pas encore (raccourci sans destination). */
-  onUnavailable: (shortcut: Shortcut) => void
-}
-
-export function ShortcutGrid({ onUnavailable }: ShortcutGridProps) {
-  const navigate = useNavigate()
-
+/**
+ * Grille de raccourcis.
+ * Chaque carte ouvre la liste des evenements avec le filtre correspondant deja
+ * actif — le filtre etant porte par l'URL (cf. `eventsPath`).
+ */
+export function ShortcutGrid() {
   return (
     <div className="shortcut-grid">
       {SHORTCUTS.map((shortcut) => (
-        <button
-          key={shortcut.id}
-          type="button"
-          className="shortcut-card"
-          onClick={() => (shortcut.to ? navigate(shortcut.to) : onUnavailable(shortcut))}
-        >
+        <Link key={shortcut.id} to={shortcut.to} className="shortcut-card">
           <IconChip icon={shortcut.icon} tone={shortcut.tone} />
           <span>
             <span className="shortcut-card__label">{shortcut.label}</span>
             <span className="shortcut-card__hint">{shortcut.hint}</span>
           </span>
-        </button>
+        </Link>
       ))}
     </div>
   )

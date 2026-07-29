@@ -116,3 +116,64 @@ export function splitDateBadge(iso: IsoDateTime): { day: string; month: string }
     month: d.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '').toUpperCase(),
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* V0.2 — conversions pour les champs natifs date / heure              */
+/* ------------------------------------------------------------------ */
+
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/** ISO -> `AAAA-MM-JJ` local, valeur d'un `<input type="date">`. */
+export function toDayInput(iso: IsoDateTime | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** ISO -> `HH:MM` local, valeur d'un `<input type="time">`. */
+export function toTimeInput(iso: IsoDateTime | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** Arrondit a l'heure pleine suivante — valeur par defaut du formulaire. */
+export function nextRoundHour(from: Date = new Date()): Date {
+  const d = new Date(from)
+  d.setMinutes(0, 0, 0)
+  d.setHours(d.getHours() + 1)
+  return d
+}
+
+/** `2 h 30`, `3 jours`, `1 h` — duree lisible d'un evenement. */
+export function formatDuration(startIso: IsoDateTime, endIso: IsoDateTime | undefined, allDay: boolean, days: number): string {
+  if (allDay) return days > 1 ? `${days} jours` : 'Toute la journee'
+  if (!endIso) return 'Non precisee'
+
+  const ms = new Date(endIso).getTime() - new Date(startIso).getTime()
+  if (!Number.isFinite(ms) || ms < 0) return 'Non precisee'
+  if (days > 1) return `${days} jours`
+
+  const totalMinutes = Math.round(ms / 60_000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours === 0) return `${minutes} min`
+  if (minutes === 0) return `${hours} h`
+  return `${hours} h ${pad(minutes)}`
+}
+
+/** `août 2026` avec majuscule initiale. */
+export function formatMonthYear(date: Date): string {
+  const label = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+/** `samedi 2 août` — en-tete de groupe dans la vue liste. */
+export function formatDayHeading(iso: IsoDateTime): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  const label = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}

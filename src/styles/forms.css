@@ -1,0 +1,281 @@
+/* Formulaires — pensés pour la saisie au pouce sur iPhone. */
+
+.event-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.field__label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--c-taupe-dark);
+}
+
+.field__input {
+  width: 100%;
+  min-height: var(--tap-target);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--c-ink);
+  /* 16px minimum : sinon Safari iOS zoome a la mise au point du champ. */
+  font-size: 16px;
+  line-height: 1.4;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.field__input::placeholder {
+  color: var(--c-ink-faint);
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--c-leather-soft);
+  box-shadow: 0 0 0 3px rgba(107, 74, 52, 0.14);
+}
+
+.field__input--invalid {
+  border-color: var(--c-danger);
+  background: var(--c-danger-bg);
+}
+
+.field__input--invalid:focus {
+  box-shadow: 0 0 0 3px rgba(162, 82, 63, 0.18);
+}
+
+.field__input--textarea {
+  resize: vertical;
+  min-height: 96px;
+  font-family: inherit;
+}
+
+/* Le chevron natif des `select` disparait avec `appearance: none` : on le
+   redessine en fond pour garder un rendu homogene entre iOS et desktop. */
+.field__input--select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: var(--s-7);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a6857' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--s-4) center;
+  background-size: 18px;
+}
+
+.field__error {
+  font-size: 0.85rem;
+  color: var(--c-danger);
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+}
+
+/* Petit marqueur non colore : l'erreur reste perceptible sans la couleur. */
+.field__error::before {
+  content: '⚠';
+  font-size: 0.9em;
+}
+
+/* --- Groupes date + heure ------------------------------------------------ */
+
+.field-group {
+  /* Un <fieldset> refuse par defaut de descendre sous sa largeur min-content :
+     sans cette ligne, les champs date/heure natifs le font deborder sur les
+     ecrans etroits (iPhone SE). */
+  min-width: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: var(--s-4);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.field-group__legend {
+  padding: 0 var(--s-2);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--c-leather-dark);
+}
+
+.field-group__hint {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--c-ink-faint);
+}
+
+.field-row {
+  display: flex;
+  gap: var(--s-3);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.field-row > .field {
+  flex: 1 1 0;
+  /* Les champs date/heure natifs ont une largeur intrinseque importante :
+     sans `min-width: 0` ils ne se compriment pas et debordent. */
+  min-width: 0;
+}
+
+.field--time {
+  flex: 1 1 38%;
+}
+
+/* Sous 360 px, date et heure passent l'une sous l'autre : plus lisible et
+   plus confortable au pouce que deux champs comprimes. */
+@media (max-width: 360px) {
+  .field-row {
+    flex-direction: column;
+    gap: var(--s-3);
+  }
+
+  .field--time {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+}
+
+/* --- Interrupteur « Toute la journée » ------------------------------------ */
+
+.field--switch {
+  padding: var(--s-1) 0;
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: var(--tap-target);
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.switch__track {
+  position: relative;
+  flex: none;
+  width: 50px;
+  height: 30px;
+  border-radius: var(--r-pill);
+  background: var(--c-sand);
+  transition: background-color var(--transition);
+}
+
+.switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-pill);
+  background: var(--c-off-white);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition);
+}
+
+.switch input:checked + .switch__track {
+  background: var(--c-leather);
+}
+
+.switch input:checked + .switch__track .switch__thumb {
+  transform: translateX(20px);
+}
+
+.switch input:focus-visible + .switch__track {
+  outline: 2px solid var(--c-leather);
+  outline-offset: 2px;
+}
+
+.switch__label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+
+/* --- Choix d'illustration -------------------------------------------------- */
+
+.illustration-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--s-3);
+}
+
+.illustration-option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border-radius: var(--r-md);
+  border: 2px solid transparent;
+  background: var(--surface-sunken);
+  transition: border-color var(--transition), transform var(--transition);
+}
+
+.illustration-option:active {
+  transform: scale(0.97);
+}
+
+.illustration-option.is-selected {
+  border-color: var(--c-leather);
+  background: rgba(107, 74, 52, 0.08);
+}
+
+/* Coche visible : la sélection ne repose pas uniquement sur la couleur. */
+.illustration-option.is-selected .illustration-option__label::before {
+  content: '✓ ';
+  font-weight: 700;
+}
+
+.illustration-option__preview {
+  width: 100%;
+  height: 48px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+}
+
+.illustration-option__auto {
+  display: grid;
+  place-items: center;
+  height: 48px;
+  border-radius: var(--r-sm);
+  background: var(--c-beige);
+  color: var(--c-leather);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.illustration-option__label {
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--c-ink-soft);
+  text-align: center;
+}
+
+/* --- Actions du formulaire --------------------------------------------------- */
+
+.event-form__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin-top: var(--s-2);
+}

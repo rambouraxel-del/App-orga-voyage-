@@ -1,0 +1,300 @@
+/* Calendrier mensuel + contrôles de filtre partagés. */
+
+/* --- Sélecteur segmenté (vue mois/liste, période) ------------------------- */
+
+.segmented {
+  display: flex;
+  gap: 4px;
+  margin-top: var(--s-4);
+  padding: 4px;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-soft);
+}
+
+.segmented__option {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 38px;
+  padding: 0 var(--s-3);
+  border-radius: var(--r-pill);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--c-taupe-dark);
+  transition: background-color var(--transition), color var(--transition);
+}
+
+.segmented__option.is-active {
+  background: var(--c-leather);
+  color: var(--c-on-leather);
+  box-shadow: var(--shadow-xs);
+}
+
+/* --- Rangée de puces de catégorie ----------------------------------------- */
+
+.chip-row {
+  display: flex;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  padding-bottom: var(--s-2);
+  /* Défilement horizontal CONTENU : la page elle-même ne déborde jamais. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: none;
+  min-height: 36px;
+  padding: 0 var(--s-4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--c-taupe-dark);
+  white-space: nowrap;
+  transition: background-color var(--transition), color var(--transition);
+}
+
+.chip.is-active {
+  background: var(--c-leather);
+  border-color: var(--c-leather);
+  color: var(--c-on-leather);
+}
+
+/* --- Champ de recherche ---------------------------------------------------- */
+
+.search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-top: var(--s-4);
+}
+
+.search-field__icon {
+  position: absolute;
+  left: var(--s-4);
+  color: var(--c-taupe);
+  pointer-events: none;
+}
+
+.search-field__input {
+  width: 100%;
+  min-height: var(--tap-target);
+  padding: var(--s-3) var(--s-7) var(--s-3) calc(var(--s-4) + 26px);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-size: 16px;
+  color: var(--c-ink);
+}
+
+.search-field__input::placeholder {
+  color: var(--c-ink-faint);
+}
+
+.search-field__input:focus {
+  outline: none;
+  border-color: var(--c-leather-soft);
+  box-shadow: 0 0 0 3px rgba(107, 74, 52, 0.14);
+}
+
+/* Croix native de `type=search` masquée : on fournit la nôtre, plus grande. */
+.search-field__input::-webkit-search-decoration,
+.search-field__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-field__clear {
+  position: absolute;
+  right: var(--s-2);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-pill);
+  color: var(--c-taupe-dark);
+  background: var(--surface-sunken);
+}
+
+.result-count {
+  margin-bottom: var(--s-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--c-taupe);
+}
+
+/* --- Calendrier ------------------------------------------------------------- */
+
+.calendar {
+  margin-top: var(--s-4);
+  padding: var(--s-4);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-sm);
+}
+
+.calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+}
+
+.calendar__title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--c-leather-dark);
+}
+
+.calendar__weekdays,
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar__weekday {
+  padding-bottom: var(--s-2);
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--c-taupe);
+}
+
+.calendar__day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  /* Cellule carrée quelle que soit la largeur — pas de dimension figée.
+     Pas de `min-height` ici : combinee a `aspect-ratio`, elle imposerait aussi
+     une largeur minimale et ferait deborder la grille sur un iPhone SE. */
+  aspect-ratio: 1;
+  min-width: 0;
+  padding-top: 6px;
+  border-radius: var(--r-md);
+  color: var(--c-ink);
+  transition: background-color var(--transition);
+}
+
+.calendar__day-number {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.calendar__day--outside .calendar__day-number {
+  color: var(--c-ink-faint);
+  font-weight: 500;
+}
+
+/* Aujourd'hui : cerclé, indépendamment de la sélection. */
+.calendar__day--today .calendar__day-number {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--c-leather-soft);
+  color: var(--c-leather-dark);
+}
+
+.calendar__day.is-selected {
+  background: var(--c-leather);
+}
+
+.calendar__day.is-selected .calendar__day-number {
+  color: var(--c-on-leather);
+  border-color: var(--c-on-leather);
+}
+
+.calendar__dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 6px;
+}
+
+.calendar__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: var(--c-taupe);
+}
+
+.calendar__dot--sage {
+  background: var(--c-sage);
+}
+.calendar__dot--sky {
+  background: var(--c-sky);
+}
+.calendar__dot--blush {
+  background: var(--c-blush);
+}
+.calendar__dot--apricot {
+  background: var(--c-apricot);
+}
+.calendar__dot--lavender {
+  background: var(--c-lavender);
+}
+.calendar__dot--mint {
+  background: var(--c-mint);
+}
+.calendar__dot--more {
+  background: var(--c-leather-soft);
+  width: 4px;
+  height: 4px;
+}
+
+.calendar__day.is-selected .calendar__dot {
+  background: var(--c-on-leather);
+}
+
+.calendar__footer {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--s-3);
+}
+
+/* Sur les ecrans les plus etroits, on resserre le cadre pour laisser le plus
+   de place possible aux cellules du calendrier. */
+@media (max-width: 360px) {
+  .calendar {
+    padding: var(--s-3);
+  }
+
+  .calendar__day-number {
+    font-size: 0.82rem;
+  }
+}
+
+.calendar__today {
+  min-height: 38px;
+  padding: 0 var(--s-5);
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--c-leather-dark);
+}

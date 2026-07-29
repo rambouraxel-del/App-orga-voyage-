@@ -7,10 +7,14 @@ import type { AppSettings } from './settings'
 
 /**
  * Version du FORMAT de sauvegarde (independante de la version applicative).
- * A incrementer uniquement lorsqu'un changement casse la lecture des anciens
- * fichiers ; l'import devra alors migrer les versions inferieures.
+ *
+ * v1 (V0.1) : evenements avec `type`, `endDate` obligatoire, statut `passe`.
+ * v2 (V0.2) : evenements avec `category`, `endDate` facultative, `allDay`,
+ *             `imageKey`, statut `termine`.
+ *
+ * Les fichiers v1 restent importables : ils sont migres a la volee vers v2.
  */
-export const BACKUP_FORMAT_VERSION = 1
+export const BACKUP_FORMAT_VERSION = 2
 
 /** Marqueur permettant de reconnaitre un fichier produit par l'application. */
 export const BACKUP_SIGNATURE = 'mes-aventures-backup'

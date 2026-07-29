@@ -1,7 +1,8 @@
 import { Icon } from '@/components/icons/Icon'
-import { Illustration, resolveIllustration } from '@/components/icons/Illustration'
+import { Illustration } from '@/components/icons/Illustration'
 import { Badge, Button, Card } from '@/components/ui'
-import { EVENT_TYPE_LABELS, type AppEvent } from '@/models'
+import { EVENT_CATEGORY_LABELS, type AppEvent } from '@/models'
+import { illustrationFor } from '@/config/visuals'
 import { formatCountdown, formatDateRange, formatTime } from '@/utils/date'
 import { pluralize } from '@/utils/format'
 
@@ -12,7 +13,7 @@ export interface NextEventCardProps {
 
 /** Carte principale de l'accueil : le prochain evenement mis en avant. */
 export function NextEventCard({ event, onOpenDetail }: NextEventCardProps) {
-  const illustration = resolveIllustration(event.type)
+  const illustration = illustrationFor(event)
 
   return (
     <Card className="next-event">
@@ -20,7 +21,7 @@ export function NextEventCard({ event, onOpenDetail }: NextEventCardProps) {
         <Illustration name={illustration} className="next-event__illustration" />
         <div className="next-event__banner-top">
           <Badge className="next-event__countdown">{formatCountdown(event.startDate)}</Badge>
-          <Badge className="next-event__countdown">{EVENT_TYPE_LABELS[event.type]}</Badge>
+          <Badge className="next-event__countdown">{EVENT_CATEGORY_LABELS[event.category]}</Badge>
         </div>
       </div>
 
@@ -31,7 +32,8 @@ export function NextEventCard({ event, onOpenDetail }: NextEventCardProps) {
           <p className="meta-row">
             <Icon name="calendrier" size={18} className="meta-row__icon" />
             <span className="meta-row__text">
-              {formatDateRange(event.startDate, event.endDate)} · {formatTime(event.startDate)}
+              {formatDateRange(event.startDate, event.endDate ?? event.startDate)}
+              {event.allDay ? '' : ` · ${formatTime(event.startDate)}`}
             </span>
           </p>
           {event.location ? (

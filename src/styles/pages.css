@@ -229,3 +229,212 @@
   gap: var(--s-2);
   margin-top: var(--s-1);
 }
+
+/* ------------------------------------------------------------------ */
+/* V0.2 — fiche événement, cartes cliquables, bouton icône            */
+/* ------------------------------------------------------------------ */
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--tap-target);
+  height: var(--tap-target);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--c-leather);
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--transition);
+}
+
+.icon-btn:active {
+  transform: scale(0.94);
+}
+
+/* La carte d'événement devient un lien : on neutralise le style de lien. */
+.entity-card--link {
+  display: flex;
+  color: inherit;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.entity-card--link:active {
+  transform: scale(0.985);
+  box-shadow: none;
+}
+
+/* Un événement passé s'estompe sans devenir illisible. */
+.entity-card--past {
+  background: var(--surface-sunken);
+}
+
+.entity-card--past .entity-card__title {
+  color: var(--c-taupe-dark);
+}
+
+.entity-card__chevron {
+  flex: none;
+  align-self: center;
+  color: var(--c-ink-faint);
+}
+
+.meta-row--compact {
+  font-size: 0.85rem;
+  gap: var(--s-2);
+}
+
+/* --- Fiche détaillée -------------------------------------------------- */
+
+.detail-card {
+  overflow: hidden;
+  padding: 0;
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.detail-card__banner {
+  position: relative;
+  height: 138px;
+}
+
+.detail-card__illustration {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.detail-card__banner-badges {
+  position: absolute;
+  top: var(--s-3);
+  left: var(--s-3);
+  right: var(--s-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.detail-card__banner-badge {
+  background: rgba(255, 253, 249, 0.9);
+  color: var(--c-leather-dark);
+}
+
+.detail-card__body {
+  padding: var(--s-5);
+}
+
+.detail-card__title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--c-leather-dark);
+  overflow-wrap: anywhere;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}
+
+.detail-list__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.detail-list__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.detail-list__row dt {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--c-taupe-dark);
+}
+
+.detail-list__row dd {
+  text-align: right;
+  font-size: 0.92rem;
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+}
+
+.detail-card__notes {
+  margin-top: var(--s-5);
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+
+.detail-card__notes-title {
+  margin-bottom: var(--s-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-taupe-dark);
+}
+
+.detail-card__notes p {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--c-ink-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.detail-card__stamps {
+  margin-top: var(--s-5);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--c-ink-faint);
+}
+
+/* --- Actions de la fiche ------------------------------------------------ */
+
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}
+
+.detail-actions__row {
+  display: flex;
+  gap: var(--s-3);
+}
+
+.detail-actions__row > .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-inline: var(--s-3);
+}
+
+.btn--danger {
+  color: var(--c-danger);
+  border-color: rgba(162, 82, 63, 0.35);
+}
+
+.btn--danger:active:not(:disabled) {
+  background: var(--c-danger-bg);
+}
+
+/* En-tête de page : le titre peut cohabiter avec un bouton d'action. */
+.page-header {
+  align-items: center;
+}
+
+.page-header .page-title {
+  font-size: clamp(1.45rem, 6vw, 1.75rem);
+}

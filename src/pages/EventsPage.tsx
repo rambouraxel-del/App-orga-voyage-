@@ -1,68 +1,225 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { EventCard } from '@/components/events/EventCard'
-import { SkeletonBlock, StateBlock } from '@/components/ui'
+import { Icon } from '@/components/icons/Icon'
+import { Alert, Button, PageHeader, SkeletonBlock, StateBlock } from '@/components/ui'
 import { eventsRepository } from '@/db/repositories'
 import { useLiveData } from '@/hooks/useLiveData'
+import { EVENT_CATEGORIES, EVENT_CATEGORY_LABELS, type EventCategory } from '@/models'
+import { eventNewPath } from '@/navigation/routes'
+import { compareByStart, compareByStartDesc, isPastEvent, matchesQuery } from '@/utils/eventRules'
+
+/** Perimetre temporel du filtre. */
+const SCOPES = [
+  { key: 'a-venir', label: 'A venir' },
+  { key: 'passes', label: 'Passes' },
+  { key: 'tous', label: 'Tous' },
+] as const
+
+type Scope = (typeof SCOPES)[number]['key']
+
+const isScope = (value: string | null): value is Scope =>
+  SCOPES.some((scope) => scope.key === value)
+
+const isCategory = (value: string | null): value is EventCategory =>
+  (EVENT_CATEGORIES as readonly string[]).includes(value ?? '')
 
 export function EventsPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Les filtres vivent dans l'URL : les raccourcis de l'accueil peuvent donc
+  // ouvrir cette page avec une categorie deja active, et un retour arriere
+  // restitue l'etat precedent.
+  const scope: Scope = isScope(searchParams.get('quand')) ? (searchParams.get('quand') as Scope) : 'a-venir'
+  const category = isCategory(searchParams.get('categorie'))
+    ? (searchParams.get('categorie') as EventCategory)
+    : null
+
+  const [query, setQuery] = useState('')
+
+  /** Message transmis apres une suppression depuis la fiche. */
+  const [flash] = useState<string | null>(
+    (location.state as { flash?: string } | null)?.flash ?? null,
+  )
+  useEffect(() => {
+    // On efface l'etat de navigation pour que le message ne revienne pas
+    // apres un rafraichissement ou un retour arriere.
+    if (flash) navigate(location.pathname + location.search, { replace: true, state: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flash])
+
   const { data, loading, error } = useLiveData(() => eventsRepository.listAll())
 
-  const events = data ?? []
-  const upcoming = events.filter((event) => event.status !== 'passe')
-  const past = events.filter((event) => event.status === 'passe')
+  function updateParam(key: string, value: string | null) {
+    const next = new URLSearchParams(searchParams)
+    if (value) next.set(key, value)
+    else next.delete(key)
+    setSearchParams(next, { replace: true })
+  }
+
+  const events = useMemo(() => data ?? [], [data])
+
+  const visible = useMemo(() => {
+    const now = new Date()
+    return events
+      .filter((event) => {
+        if (scope === 'a-venir' && isPastEvent(event, now)) return false
+        if (scope === 'passes' && !isPastEvent(event, now)) return false
+        if (category && event.category !== category) return false
+        return matchesQuery(event, query)
+      })
+      // Les passes se lisent du plus recent au plus ancien ; le reste dans
+      // l'ordre chronologique naturel.
+      .sort(scope === 'passes' ? compareByStartDesc : compareByStart)
+  }, [events, scope, category, query])
+
+  const filtersActive = category !== null || query.trim().length > 0
 
   return (
     <>
-      <header className="page-header">
-        <div className="page-header__text">
-          <h1 className="page-title">Evenements</h1>
-          <p className="page-subtitle">
-            Sorties, soirees, concerts et week-ends enregistres sur cet appareil.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Evenements"
+        subtitle="Retrouve, filtre et gere tout ce que tu as prevu."
+        action={
+          <Button variant="primary" icon="plus" onClick={() => navigate(eventNewPath())}>
+            Ajouter
+          </Button>
+        }
+      />
 
+      {flash ? <Alert tone="success">{flash}</Alert> : null}
+
+      {/* --- Recherche ------------------------------------------------------ */}
+      <div className="search-field">
+        <Icon name="recherche" size={18} className="search-field__icon" />
+        <input
+          type="search"
+          className="search-field__input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Rechercher un titre, un lieu, une note…"
+          aria-label="Rechercher un evenement"
+          enterKeyHint="search"
+        />
+        {query ? (
+          <button
+            type="button"
+            className="search-field__clear"
+            onClick={() => setQuery('')}
+            aria-label="Effacer la recherche"
+          >
+            <Icon name="fermer" size={16} />
+          </button>
+        ) : null}
+      </div>
+
+      {/* --- Perimetre temporel ---------------------------------------------- */}
+      <div className="segmented" role="group" aria-label="Periode">
+        {SCOPES.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={['segmented__option', scope === item.key ? 'is-active' : '']
+              .filter(Boolean)
+              .join(' ')}
+            aria-pressed={scope === item.key}
+            onClick={() => updateParam('quand', item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {/* --- Categories ------------------------------------------------------- */}
+      <div className="chip-row" role="group" aria-label="Filtrer par categorie">
+        <button
+          type="button"
+          className={['chip', category === null ? 'is-active' : ''].filter(Boolean).join(' ')}
+          aria-pressed={category === null}
+          onClick={() => updateParam('categorie', null)}
+        >
+          Toutes
+        </button>
+        {EVENT_CATEGORIES.map((item) => (
+          <button
+            key={item}
+            type="button"
+            className={['chip', category === item ? 'is-active' : ''].filter(Boolean).join(' ')}
+            aria-pressed={category === item}
+            onClick={() => updateParam('categorie', category === item ? null : item)}
+          >
+            {EVENT_CATEGORY_LABELS[item]}
+          </button>
+        ))}
+      </div>
+
+      {/* --- Resultats --------------------------------------------------------- */}
       {loading ? (
-        <div className="stack--lg stack">
-          <SkeletonBlock height={130} />
-          <SkeletonBlock height={130} />
-          <SkeletonBlock height={130} />
+        <div className="stack--lg stack section">
+          <SkeletonBlock height={120} />
+          <SkeletonBlock height={120} />
         </div>
       ) : error ? (
-        <StateBlock error title="Evenements indisponibles" text={error} />
-      ) : events.length === 0 ? (
-        <StateBlock
-          icon="etoiles"
-          title="Aucun evenement"
-          text="La creation d’evenements arrive dans une prochaine version. En attendant, restaure une sauvegarde depuis l’onglet Sauvegarde."
-        />
+        <div className="section">
+          <StateBlock error title="Evenements indisponibles" text={error} />
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="section">
+          {events.length === 0 ? (
+            <StateBlock
+              icon="etoiles"
+              title="Aucun evenement pour l’instant"
+              text="Cree ton premier evenement : il apparaitra ici et dans ton agenda."
+              action={
+                <Button variant="primary" icon="plus" onClick={() => navigate(eventNewPath())}>
+                  Creer un evenement
+                </Button>
+              }
+            />
+          ) : (
+            <StateBlock
+              icon="recherche"
+              title="Aucun resultat"
+              text={
+                filtersActive
+                  ? 'Aucun evenement ne correspond a ta recherche et a tes filtres.'
+                  : scope === 'passes'
+                    ? 'Tu n’as pas encore d’evenement passe.'
+                    : 'Rien de prevu pour le moment.'
+              }
+              action={
+                filtersActive ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setQuery('')
+                      updateParam('categorie', null)
+                    }}
+                  >
+                    Effacer les filtres
+                  </Button>
+                ) : (
+                  <Button variant="primary" icon="plus" onClick={() => navigate(eventNewPath())}>
+                    Creer un evenement
+                  </Button>
+                )
+              }
+            />
+          )}
+        </div>
       ) : (
-        <>
-          <section>
-            <div className="section-header">
-              <h2 className="section-title">A venir</h2>
-              <span className="section-action">{upcoming.length}</span>
-            </div>
-            <div className="stack--lg stack">
-              {upcoming.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
-          </section>
-
-          {past.length > 0 ? (
-            <section className="section">
-              <div className="section-header">
-                <h2 className="section-title">Deja vecus</h2>
-                <span className="section-action">{past.length}</span>
-              </div>
-              <div className="stack--lg stack">
-                {past.map((event) => (
-                  <EventCard key={event.id} event={event} />
-                ))}
-              </div>
-            </section>
-          ) : null}
-        </>
+        <section className="section">
+          <p className="result-count" aria-live="polite">
+            {visible.length} evenement{visible.length > 1 ? 's' : ''}
+          </p>
+          <div className="stack--lg stack">
+            {visible.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        </section>
       )}
     </>
   )

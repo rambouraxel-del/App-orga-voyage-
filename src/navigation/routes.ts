@@ -5,19 +5,42 @@ export const ROUTES = {
   home: '/',
   agenda: '/agenda',
   events: '/evenements',
+  eventNew: '/evenements/nouveau',
+  eventDetail: '/evenements/:id',
+  eventEdit: '/evenements/:id/modifier',
   trips: '/voyages',
   backup: '/sauvegarde',
-  eventDetail: '/evenements/:id',
 } as const
 
 export const eventDetailPath = (id: string) => `/evenements/${encodeURIComponent(id)}`
+export const eventEditPath = (id: string) => `/evenements/${encodeURIComponent(id)}/modifier`
+
+/**
+ * Creation d'un evenement.
+ * `duplicateOf` pre-remplit le formulaire a partir d'un evenement existant,
+ * sans jamais toucher a l'original.
+ */
+export const eventNewPath = (options?: { duplicateOf?: string; day?: string }) => {
+  const params = new URLSearchParams()
+  if (options?.duplicateOf) params.set('copie', options.duplicateOf)
+  if (options?.day) params.set('jour', options.day)
+  const query = params.toString()
+  return query ? `${ROUTES.eventNew}?${query}` : ROUTES.eventNew
+}
+
+/** Liste des evenements, avec filtres pre-actives depuis les raccourcis. */
+export const eventsPath = (options?: { category?: string; scope?: string }) => {
+  const params = new URLSearchParams()
+  if (options?.category) params.set('categorie', options.category)
+  if (options?.scope) params.set('quand', options.scope)
+  const query = params.toString()
+  return query ? `${ROUTES.events}?${query}` : ROUTES.events
+}
 
 export interface TabDefinition {
-  /** Chemin cible. */
   to: string
   label: string
   icon: IconName
-  /** Libelle long pour les lecteurs d'ecran. */
   ariaLabel: string
 }
 

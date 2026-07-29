@@ -6,75 +6,82 @@ import {
   tripsRepository,
 } from '@/db/repositories'
 import type { AppEvent, AppSettings, Reminder, TravelDocument, Trip } from '@/models'
+import { isUpcoming, overlapsRange } from '@/utils/eventRules'
 import { useLiveData, type LiveDataState } from './useLiveData'
 
-export interface MonthBudget {
-  /** Somme des budgets previsionnels des evenements du mois en cours. */
+export interface MonthSummary {
+  /** Nombre d'evenements du mois en cours. */
+  count: number
+  /** Somme des budgets previsionnels (champ hors perimetre V0.2, conserve). */
   total: number
-  eventCount: number
   label: string
 }
 
 export interface DashboardData {
   settings: AppSettings
+  /** Prochain evenement a venir. */
   nextEvent: AppEvent | null
-  /** Prochains evenements, hors evenement mis en avant. */
+  /** Les trois suivants, hors evenement mis en avant. */
   agenda: AppEvent[]
+  /** Prochain evenement de categorie « voyage ». */
+  nextTripEvent: AppEvent | null
   nextTrip: Trip | null
-  budget: MonthBudget
+  month: MonthSummary
   reminders: Reminder[]
   pendingReminderCount: number
   documents: TravelDocument[]
   documentCount: number
-  /** Vrai si la base ne contient aucune donnee exploitable. */
-  isEmpty: boolean
+  /** Vrai si l'utilisateur n'a aucun evenement — declenche l'ecran d'accueil vide. */
+  hasNoEvents: boolean
 }
 
-function computeMonthBudget(events: AppEvent[], reference = new Date()): MonthBudget {
-  const inMonth = events.filter((event) => {
-    const start = new Date(event.startDate)
-    return (
-      start.getFullYear() === reference.getFullYear() &&
-      start.getMonth() === reference.getMonth() &&
-      event.status !== 'annule'
-    )
-  })
+function summarizeMonth(events: AppEvent[], reference = new Date()): MonthSummary {
+  const from = new Date(reference.getFullYear(), reference.getMonth(), 1)
+  const to = new Date(reference.getFullYear(), reference.getMonth() + 1, 0)
+
+  // Un evenement a cheval sur deux mois compte pour le mois courant s'il le
+  // recouvre, meme partiellement.
+  const inMonth = events.filter(
+    (event) => event.status !== 'annule' && overlapsRange(event, from, to),
+  )
 
   return {
+    count: inMonth.length,
     total: inMonth.reduce((sum, event) => sum + (event.budget ?? 0), 0),
-    eventCount: inMonth.length,
     label: reference.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
   }
 }
 
 /**
- * Charge, depuis la base locale, l'ensemble des donnees affichees sur
- * l'accueil. Aucune valeur n'est ecrite en dur dans les composants.
+ * Charge depuis la base locale l'ensemble des donnees affichees sur l'accueil.
+ * Aucune valeur n'est ecrite en dur dans les composants.
  */
 export function useDashboard(): LiveDataState<DashboardData> {
   return useLiveData<DashboardData>(async () => {
-    const [settings, upcomingEvents, allEvents, nextTrip, reminders, documents] = await Promise.all([
+    const [settings, allEvents, nextTrip, reminders, documents] = await Promise.all([
       settingsRepository.get(),
-      eventsRepository.listUpcoming(4),
       eventsRepository.listAll(),
       tripsRepository.findNext(),
       remindersRepository.listPending(),
       documentsRepository.listSorted(),
     ])
 
-    const [nextEvent, ...rest] = upcomingEvents
+    const now = new Date()
+    const upcoming = allEvents.filter((event) => isUpcoming(event, now))
+    const [nextEvent, ...rest] = upcoming
 
     return {
       settings,
       nextEvent: nextEvent ?? null,
       agenda: rest.slice(0, 3),
+      nextTripEvent: upcoming.find((event) => event.category === 'voyage') ?? null,
       nextTrip,
-      budget: computeMonthBudget(allEvents),
+      month: summarizeMonth(allEvents, now),
       reminders: reminders.slice(0, 3),
       pendingReminderCount: reminders.length,
       documents: documents.slice(0, 2),
       documentCount: documents.length,
-      isEmpty: allEvents.length === 0 && nextTrip === null,
+      hasNoEvents: allEvents.length === 0,
     }
   })
 }
