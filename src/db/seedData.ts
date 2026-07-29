@@ -207,39 +207,10 @@ export function buildSeedData(displayName = 'Axel'): SeedPayload {
     },
   ]
 
-  const documents: TravelDocument[] = [
-    {
-      id: createId(),
-      title: 'Billet de train Paris → Nice',
-      kind: 'billet',
-      date: atTime(addDays(now, 5), 8, 30),
-      tripId: niceTripId,
-      ...stamps,
-    },
-    {
-      id: createId(),
-      title: 'Reservation Hotel Le Petit Palais',
-      kind: 'reservation',
-      date: atTime(addDays(now, 5), 16, 0),
-      tripId: niceTripId,
-      ...stamps,
-    },
-    {
-      id: createId(),
-      title: 'Billets Nuits Sonores (x4)',
-      kind: 'billet',
-      date: atTime(addDays(now, 16), 19, 0),
-      ...stamps,
-    },
-    {
-      id: createId(),
-      title: 'Assurance voyage Europe',
-      kind: 'assurance',
-      date: atTime(addDays(now, 63), 6, 45),
-      tripId: lisbonneTripId,
-      ...stamps,
-    },
-  ]
+  // V0.4 : plus de documents de demonstration. Une fiche sans fichier joint
+  // n'aurait pas de sens desormais ; la bibliotheque demarre donc vide, avec
+  // son etat d'accueil et son bouton d'ajout.
+  const documents: TravelDocument[] = []
 
   const settings: AppSettings = {
     key: SETTINGS_KEY,

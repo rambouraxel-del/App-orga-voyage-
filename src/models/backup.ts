@@ -16,11 +16,13 @@ import type { AppSettings } from './settings'
  * v2 (V0.2) : evenements avec `category`, `endDate` facultative, `allDay`,
  *             `imageKey`, statut `termine`.
  * v3 (V0.3) : ajout des taches, participants, objets/cadeaux et depenses.
+ * v4 (V0.4) : documents avec fichiers reels. L'export devient une ARCHIVE ZIP
+ *             contenant `sauvegarde.json` et un dossier `documents/`.
  *
  * Les fichiers v1 et v2 restent importables : les collections absentes sont
  * simplement vides apres import, et les evenements sont migres a la volee.
  */
-export const BACKUP_FORMAT_VERSION = 3
+export const BACKUP_FORMAT_VERSION = 4
 
 /** Marqueur permettant de reconnaitre un fichier produit par l'application. */
 export const BACKUP_SIGNATURE = 'mes-aventures-backup'
@@ -53,4 +55,21 @@ export interface BackupFile {
     expenses?: Expense[]
     settings: BackupSettings
   }
+  /**
+   * Manifeste des fichiers presents dans l'archive (v4+).
+   * Absent d'une sauvegarde JSON simple : les documents n'ont alors pas de
+   * fichier joint, ce qui reste un etat valide.
+   */
+  files?: BackupFileEntry[]
+}
+
+/** Correspondance document <-> fichier dans l'archive. */
+export interface BackupFileEntry {
+  /** Identifiant du document auquel ce fichier appartient. */
+  documentId: string
+  /** Chemin dans l'archive, ex. `documents/<id>.pdf`. */
+  path: string
+  fileName: string
+  mimeType: string
+  size: number
 }

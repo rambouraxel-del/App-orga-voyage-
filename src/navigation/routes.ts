@@ -10,6 +10,7 @@ export const ROUTES = {
   eventEdit: '/evenements/:id/modifier',
   trips: '/voyages',
   documents: '/documents',
+  documentDetail: '/documents/:id',
   settings: '/parametres',
   /** Route historique V0.1/V0.2 — redirige vers la section Sauvegarde. */
   legacyBackup: '/sauvegarde',
@@ -35,6 +36,18 @@ export const eventNewPath = (options?: { duplicateOf?: string; day?: string }) =
 }
 
 /** Liste des evenements, avec filtres pre-actives depuis les raccourcis. */
+export const documentDetailPath = (id: string) => `/documents/${encodeURIComponent(id)}`
+
+/** Bibliotheque de documents, avec filtres pre-actives. */
+export const documentsPath = (options?: { category?: string; eventId?: string; vue?: string }) => {
+  const params = new URLSearchParams()
+  if (options?.category) params.set('categorie', options.category)
+  if (options?.eventId) params.set('evenement', options.eventId)
+  if (options?.vue) params.set('vue', options.vue)
+  const query = params.toString()
+  return query ? `${ROUTES.documents}?${query}` : ROUTES.documents
+}
+
 export const eventsPath = (options?: { category?: string; scope?: string }) => {
   const params = new URLSearchParams()
   if (options?.category) params.set('categorie', options.category)

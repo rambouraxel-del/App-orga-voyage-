@@ -10,7 +10,7 @@ import {
   TASK_PRIORITIES,
   TRIP_STATUSES,
   REMINDER_CATEGORIES,
-  DOCUMENT_KINDS,
+  DOCUMENT_CATEGORIES,
   type AppEvent,
   type BackupFile,
   type EventItem,
@@ -21,7 +21,7 @@ import {
   type TravelDocument,
   type Trip,
 } from '@/models'
-import { migrateEventToV2 } from '@/db/database'
+import { migrateDocumentToV4, migrateEventToV2 } from '@/db/database'
 import { AppError, ERROR_MESSAGES } from './errors'
 
 /* ------------------------------------------------------------------ */
@@ -131,19 +131,30 @@ function parseReminder(raw: unknown, index: number): Reminder {
 function parseDocument(raw: unknown, index: number): TravelDocument {
   const path = `data.documents[${index}]`
   if (!isObject(raw)) invalid(path, 'objet attendu')
-  if (!isNonEmptyString(raw.id)) invalid(`${path}.id`, 'identifiant manquant')
-  if (!isNonEmptyString(raw.title)) invalid(`${path}.title`, 'titre manquant')
 
-  const stamp = isIsoDate(raw.createdAt) ? raw.createdAt : new Date(0).toISOString()
+  // Un fichier v1-v3 porte `kind` et `date` : on le ramene au format v4 avant
+  // de valider, pour n'avoir qu'une seule forme a controler.
+  const document = migrateDocumentToV4({ ...raw })
+
+  if (!isNonEmptyString(document.id)) invalid(`${path}.id`, 'identifiant manquant')
+  if (!isNonEmptyString(document.title)) invalid(`${path}.title`, 'titre manquant')
+
+  const stamp = isIsoDate(document.createdAt) ? document.createdAt : new Date(0).toISOString()
   return {
-    id: raw.id,
-    title: raw.title,
-    kind: isOneOf(raw.kind, DOCUMENT_KINDS) ? raw.kind : 'autre',
-    ...(isIsoDate(raw.date) ? { date: raw.date } : {}),
-    ...(isNonEmptyString(raw.eventId) ? { eventId: raw.eventId } : {}),
-    ...(isNonEmptyString(raw.tripId) ? { tripId: raw.tripId } : {}),
+    id: document.id,
+    title: document.title,
+    category: isOneOf(document.category, DOCUMENT_CATEGORIES) ? document.category : 'autre',
+    ...(isIsoDate(document.usefulDate) ? { usefulDate: document.usefulDate } : {}),
+    ...(isNonEmptyString(document.eventId) ? { eventId: document.eventId } : {}),
+    ...(isNonEmptyString(document.tripId) ? { tripId: document.tripId } : {}),
+    ...(isNonEmptyString(document.note) ? { note: document.note } : {}),
+    fileName: typeof document.fileName === 'string' ? document.fileName : '',
+    mimeType: typeof document.mimeType === 'string' ? document.mimeType : '',
+    size:
+      typeof document.size === 'number' && Number.isFinite(document.size) ? document.size : 0,
+    archived: document.archived === true,
     createdAt: stamp,
-    updatedAt: isIsoDate(raw.updatedAt) ? raw.updatedAt : stamp,
+    updatedAt: isIsoDate(document.updatedAt) ? document.updatedAt : stamp,
   }
 }
 
@@ -280,12 +291,32 @@ export function validateBackup(raw: unknown): BackupFile {
   }
   if (!isObject(data.settings)) invalid('data.settings', 'objet attendu')
 
+  // Manifeste des fichiers (v4+). Une entree incomplete est ignoree plutot que
+  // de faire echouer tout l'import : la fiche sera simplement signalee comme
+  // ayant un fichier manquant.
+  const files = Array.isArray(raw.files)
+    ? raw.files.flatMap((entry: unknown) => {
+        if (!isObject(entry)) return []
+        if (!isNonEmptyString(entry.documentId) || !isNonEmptyString(entry.path)) return []
+        return [
+          {
+            documentId: entry.documentId,
+            path: entry.path,
+            fileName: typeof entry.fileName === 'string' ? entry.fileName : '',
+            mimeType: typeof entry.mimeType === 'string' ? entry.mimeType : '',
+            size: typeof entry.size === 'number' && Number.isFinite(entry.size) ? entry.size : 0,
+          },
+        ]
+      })
+    : []
+
   const settings = data.settings
   return {
     signature: BACKUP_SIGNATURE,
     formatVersion,
     appVersion: typeof raw.appVersion === 'string' ? raw.appVersion : 'inconnue',
     createdAt: isIsoDate(raw.createdAt) ? raw.createdAt : new Date().toISOString(),
+    files,
     data: {
       events: data.events.map(parseEvent),
       trips: data.trips.map(parseTrip),

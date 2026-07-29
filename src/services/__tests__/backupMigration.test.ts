@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { migrateEventToV2 } from '@/db/database'
+import { migrateDocumentToV4, migrateEventToV2 } from '@/db/database'
 import { BACKUP_FORMAT_VERSION, BACKUP_SIGNATURE } from '@/models'
 import { parseBackupText, validateBackup } from '../backupValidation'
 
@@ -235,6 +235,144 @@ describe('sauvegardes et modules V0.3', () => {
   it('refuse un module qui n’est pas un tableau', () => {
     const raw = makeBackup(3, [modernEvent]) as Record<string, any>
     raw.data.expenses = { pas: 'un tableau' }
+    expect(() => validateBackup(raw)).toThrow()
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* V0.4 — documents, manifeste et associations                         */
+/* ------------------------------------------------------------------ */
+
+describe('migration des documents vers la V0.4', () => {
+  const legacyDocument = {
+    id: 'doc-legacy',
+    title: 'Billet de train',
+    kind: 'billet',
+    date: '2026-08-02T06:30:00.000Z',
+    eventId: 'evt-1',
+    createdAt: '2026-07-28T06:00:00.000Z',
+    updatedAt: '2026-07-28T06:00:00.000Z',
+  }
+
+  it('convertit `kind` en `category`', () => {
+    const migrated = migrateDocumentToV4({ ...legacyDocument })
+    expect(migrated.category).toBe('billet')
+    expect(migrated.kind).toBeUndefined()
+  })
+
+  it('convertit `date` en `usefulDate`', () => {
+    const migrated = migrateDocumentToV4({ ...legacyDocument })
+    expect(migrated.usefulDate).toBe('2026-08-02T06:30:00.000Z')
+    expect(migrated.date).toBeUndefined()
+  })
+
+  it('cree une fiche sans fichier plutot que de la supprimer', () => {
+    const migrated = migrateDocumentToV4({ ...legacyDocument })
+    expect(migrated.fileName).toBe('')
+    expect(migrated.size).toBe(0)
+    expect(migrated.archived).toBe(false)
+  })
+
+  it('preserve l’association a l’evenement', () => {
+    expect(migrateDocumentToV4({ ...legacyDocument }).eventId).toBe('evt-1')
+  })
+
+  it('retombe sur « autre » pour une categorie inconnue', () => {
+    expect(migrateDocumentToV4({ ...legacyDocument, kind: 'martien' }).category).toBe('autre')
+  })
+
+  it('abandonne le champ `fileRef` jamais utilise', () => {
+    expect(migrateDocumentToV4({ ...legacyDocument, fileRef: 'x' }).fileRef).toBeUndefined()
+  })
+
+  it('est idempotente', () => {
+    const once = migrateDocumentToV4({ ...legacyDocument })
+    expect(migrateDocumentToV4({ ...once })).toEqual(once)
+  })
+})
+
+describe('manifeste de sauvegarde V0.4', () => {
+  const v4Document = {
+    id: 'doc-1',
+    title: 'Billet Nice',
+    category: 'billet',
+    eventId: 'evt-1',
+    usefulDate: '2026-08-02T06:30:00.000Z',
+    fileName: 'billet.pdf',
+    mimeType: 'application/pdf',
+    size: 2048,
+    archived: false,
+    createdAt: '2026-07-28T06:00:00.000Z',
+    updatedAt: '2026-07-28T06:00:00.000Z',
+  }
+
+  function v4Backup(files?: unknown) {
+    const raw = makeBackup(4, []) as Record<string, any>
+    raw.data.documents = [v4Document]
+    if (files !== undefined) raw.files = files
+    return raw
+  }
+
+  it('lit le manifeste et conserve les correspondances', () => {
+    const backup = validateBackup(
+      v4Backup([
+        {
+          documentId: 'doc-1',
+          path: 'documents/doc-1.pdf',
+          fileName: 'billet.pdf',
+          mimeType: 'application/pdf',
+          size: 2048,
+        },
+      ]),
+    )
+    expect(backup.files).toHaveLength(1)
+    expect(backup.files?.[0]?.documentId).toBe('doc-1')
+    expect(backup.files?.[0]?.path).toBe('documents/doc-1.pdf')
+  })
+
+  it('conserve les metadonnees de fichier du document', () => {
+    const backup = validateBackup(v4Backup([]))
+    const document = backup.data.documents?.[0]
+    expect(document?.fileName).toBe('billet.pdf')
+    expect(document?.size).toBe(2048)
+    expect(document?.category).toBe('billet')
+    expect(document?.eventId).toBe('evt-1')
+  })
+
+  it('ignore une entree de manifeste incomplete sans faire echouer l’import', () => {
+    // Mieux vaut restaurer le reste et signaler un fichier manquant que de
+    // refuser toute la sauvegarde pour une ligne abimee.
+    const backup = validateBackup(
+      v4Backup([{ documentId: 'doc-1' }, { path: 'documents/x.pdf' }, 'pas un objet']),
+    )
+    expect(backup.files).toEqual([])
+  })
+
+  it('accepte une sauvegarde v4 sans manifeste', () => {
+    expect(validateBackup(v4Backup()).files).toEqual([])
+  })
+
+  it('accepte les documents des sauvegardes v1 a v3 et les migre', () => {
+    const raw = makeBackup(2, []) as Record<string, any>
+    raw.data.documents = [
+      {
+        id: 'doc-old',
+        title: 'Assurance',
+        kind: 'assurance',
+        date: '2026-09-01T00:00:00.000Z',
+        createdAt: '2026-07-28T06:00:00.000Z',
+        updatedAt: '2026-07-28T06:00:00.000Z',
+      },
+    ]
+    const document = validateBackup(raw).data.documents?.[0]
+    expect(document?.category).toBe('assurance')
+    expect(document?.usefulDate).toBe('2026-09-01T00:00:00.000Z')
+    expect(document?.size).toBe(0)
+  })
+
+  it('refuse un document sans titre', () => {
+    const raw = makeBackup(4, []) as Record<string, any>
+    raw.data.documents = [{ ...v4Document, title: '' }]
     expect(() => validateBackup(raw)).toThrow()
   })
 })

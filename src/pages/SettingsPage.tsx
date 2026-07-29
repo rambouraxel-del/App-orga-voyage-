@@ -81,7 +81,7 @@ export function SettingsPage() {
         </div>
         <p className="settings-hint">
           Application 100 % locale : aucune donnee ne quitte cet appareil, sauf par un export
-          volontaire. Format de sauvegarde JSON v3.
+          volontaire. Format de sauvegarde v4 : archive ZIP contenant tes donnees et tes fichiers.
         </p>
       </section>
     </>

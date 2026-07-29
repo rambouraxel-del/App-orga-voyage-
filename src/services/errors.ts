@@ -36,6 +36,17 @@ export const ERROR_MESSAGES = {
   MODULE_CREATE: (label: string) => `Cet element (${label}) n'a pas pu etre ajoute. Reessaie.`,
   MODULE_UPDATE: (label: string) => `Cet element (${label}) n'a pas pu etre modifie. Reessaie.`,
   MODULE_DELETE: (label: string) => `Cet element (${label}) n'a pas pu etre supprime. Reessaie.`,
+  DOCUMENT_NOT_FOUND:
+    'Ce document est introuvable. Il a peut-etre ete supprime depuis un autre onglet.',
+  DOCUMENT_SAVE:
+    "Le document n'a pas pu etre enregistre. Si le probleme persiste, l'espace de stockage est peut-etre sature.",
+  DOCUMENT_DELETE: "Le document n'a pas pu etre supprime. Reessaie dans un instant.",
+  DOCUMENT_FILE_MISSING:
+    'Le fichier de ce document est introuvable sur cet appareil. La fiche est conservee, mais le fichier doit etre reimporte.',
+  DOCUMENT_STORAGE_FULL:
+    "L'espace de stockage est sature. Supprime des documents ou libere de la place, puis reessaie.",
+  ZIP_INVALID:
+    "Cette archive n'a pas pu etre lue. Verifie qu'il s'agit bien d'une sauvegarde ZIP generee par l'application.",
   MIGRATION_FAILED:
     "La mise a jour de la base locale a echoue. Tes donnees sont conservees : exporte une sauvegarde depuis l'onglet Sauvegarde, puis relance l'application.",
   IMPORT_WRITE:

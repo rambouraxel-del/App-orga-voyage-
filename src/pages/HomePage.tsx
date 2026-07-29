@@ -4,6 +4,7 @@ import { AgendaPreview } from '@/components/home/AgendaPreview'
 import { HomeHeader } from '@/components/home/HomeHeader'
 import { NextEventCard } from '@/components/home/NextEventCard'
 import {
+  DocumentsPreview,
   MonthSummaryPreview,
   PendingItemsPreview,
   PreparationPreview,
@@ -139,6 +140,14 @@ export function HomePage() {
           <UpcomingTasksPreview tasks={data.upcomingTasks} />
           <MonthSummaryPreview month={month} />
           <PendingItemsPreview items={data.pendingItems} />
+          {/* La carte Documents n'apparait que s'il y a matiere : on ne
+              surcharge pas l'accueil d'une carte vide. */}
+          {data.documentCount > 0 ? (
+            <DocumentsPreview
+              documents={data.documents}
+              expiring={data.expiringDocuments}
+            />
+          ) : null}
           <UpcomingTripPreview tripEvent={nextTripEvent} trip={data.nextTrip} />
         </div>
       </section>

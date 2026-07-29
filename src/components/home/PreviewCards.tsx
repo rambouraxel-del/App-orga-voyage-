@@ -2,12 +2,12 @@ import type { ReactNode } from 'react'
 import { IconChip } from '@/components/ui'
 import { DOCUMENT_VISUALS } from '@/config/visuals'
 import type { MonthSummary } from '@/hooks/useDashboard'
-import type { AppEvent, EventItem, Reminder, TravelDocument, Trip } from '@/models'
+import type { AppEvent, EventItem, TravelDocument, Trip } from '@/models'
 import type { UpcomingTask } from '@/hooks/useDashboard'
 import type { TaskProgress } from '@/utils/taskRules'
 import { formatShortDate } from '@/utils/date'
 import { isOverdue } from '@/utils/taskRules'
-import { Badge } from '@/components/ui'
+import { Alert, Badge } from '@/components/ui'
 import { formatCountdown, formatDateRange } from '@/utils/date'
 import { formatCurrency, pluralize } from '@/utils/format'
 
@@ -87,67 +87,42 @@ export function MonthSummaryPreview({ month }: { month: MonthSummary }) {
   )
 }
 
-/* --- A ne pas oublier ------------------------------------------------------ */
-
-export function RemindersPreview({
-  reminders,
-  total,
-}: {
-  reminders: Reminder[]
-  total: number
-}) {
-  return (
-    <PreviewCard title="A ne pas oublier" icon="cadeau" tone="apricot">
-      {reminders.length > 0 ? (
-        <>
-          <ul className="preview-card__list">
-            {reminders.map((reminder) => (
-              <li key={reminder.id} className="preview-card__list-item">
-                <span className="preview-card__bullet" aria-hidden="true" />
-                <span className="preview-card__list-text">{reminder.label}</span>
-              </li>
-            ))}
-          </ul>
-          {total > reminders.length ? (
-            <p className="preview-card__secondary">
-              +{total - reminders.length} autre{total - reminders.length > 1 ? 's' : ''}
-            </p>
-          ) : null}
-        </>
-      ) : (
-        <p className="preview-card__secondary">Tout est a jour, rien en attente.</p>
-      )}
-    </PreviewCard>
-  )
-}
-
-/* --- Documents & billets ---------------------------------------------------- */
+/* --- Prochains billets & reservations ------------------------------------- */
 
 export function DocumentsPreview({
   documents,
-  total,
+  expiring,
 }: {
   documents: TravelDocument[]
-  total: number
+  /** Documents dont la date utile approche — mis en avant. */
+  expiring: TravelDocument[]
 }) {
   return (
-    <PreviewCard title="Documents & billets" icon="ticket" tone="sage">
+    <PreviewCard title="Billets & documents" icon="ticket" tone="sage">
+      {expiring.length > 0 ? (
+        <Alert tone="info">
+          {expiring.length === 1
+            ? `« ${expiring[0]!.title} » arrive a echeance.`
+            : `${expiring.length} documents arrivent a echeance.`}
+        </Alert>
+      ) : null}
+
       {documents.length > 0 ? (
-        <>
-          <ul className="preview-card__list">
-            {documents.map((document) => (
-              <li key={document.id} className="preview-card__list-item">
-                <IconChip icon={DOCUMENT_VISUALS[document.kind].icon} tone="neutral" small />
-                <span className="preview-card__list-text">{document.title}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="preview-card__secondary">
-            {pluralize(total, 'document')} conserve{total > 1 ? 's' : ''} sur l’appareil
-          </p>
-        </>
+        <ul className="preview-card__list">
+          {documents.map((document) => (
+            <li key={document.id} className="preview-card__list-item">
+              <IconChip icon={DOCUMENT_VISUALS[document.category].icon} tone="neutral" small />
+              <span className="preview-card__list-text">
+                {document.title}
+                {document.usefulDate ? (
+                  <span className="text-faint">{` — ${formatShortDate(document.usefulDate)}`}</span>
+                ) : null}
+              </span>
+            </li>
+          ))}
+        </ul>
       ) : (
-        <p className="preview-card__secondary">Aucun document enregistre.</p>
+        <p className="preview-card__secondary">Aucun billet enregistre pour l’instant.</p>
       )}
     </PreviewCard>
   )
