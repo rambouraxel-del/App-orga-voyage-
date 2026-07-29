@@ -26,6 +26,13 @@ export const ERROR_MESSAGES = {
     "Ce fichier ne correspond pas au format de sauvegarde de Mes Aventures. Aucune donnee n'a ete modifiee.",
   IMPORT_VERSION:
     'Cette sauvegarde a ete creee avec une version plus recente de l’application. Mets a jour Mes Aventures avant de la restaurer.',
+  EVENT_NOT_FOUND:
+    "Cet evenement est introuvable. Il a peut-etre ete supprime depuis un autre onglet.",
+  EVENT_CREATE: "L'evenement n'a pas pu etre enregistre. Reessaie dans un instant.",
+  EVENT_UPDATE: "Les modifications n'ont pas pu etre enregistrees. Reessaie dans un instant.",
+  EVENT_DELETE: "L'evenement n'a pas pu etre supprime. Reessaie dans un instant.",
+  MIGRATION_FAILED:
+    "La mise a jour de la base locale a echoue. Tes donnees sont conservees : exporte une sauvegarde depuis l'onglet Sauvegarde, puis relance l'application.",
   IMPORT_WRITE:
     "La restauration a echoue. Tes donnees precedentes ont ete conservees autant que possible.",
 } as const

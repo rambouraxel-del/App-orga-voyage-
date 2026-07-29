@@ -1,8 +1,8 @@
 import {
   BACKUP_FORMAT_VERSION,
   BACKUP_SIGNATURE,
+  EVENT_CATEGORIES,
   EVENT_STATUSES,
-  EVENT_TYPES,
   TRIP_STATUSES,
   REMINDER_CATEGORIES,
   DOCUMENT_KINDS,
@@ -12,6 +12,7 @@ import {
   type TravelDocument,
   type Trip,
 } from '@/models'
+import { migrateEventToV2 } from '@/db/database'
 import { AppError, ERROR_MESSAGES } from './errors'
 
 /* ------------------------------------------------------------------ */
@@ -43,27 +44,36 @@ function invalid(path: string, reason: string): never {
 function parseEvent(raw: unknown, index: number): AppEvent {
   const path = `data.events[${index}]`
   if (!isObject(raw)) invalid(path, 'objet attendu')
-  if (!isNonEmptyString(raw.id)) invalid(`${path}.id`, 'identifiant manquant')
-  if (!isNonEmptyString(raw.title)) invalid(`${path}.title`, 'titre manquant')
-  if (!isIsoDate(raw.startDate)) invalid(`${path}.startDate`, 'date de debut invalide')
-  if (!isIsoDate(raw.endDate)) invalid(`${path}.endDate`, 'date de fin invalide')
+
+  // Un fichier v1 porte `type` et un statut `passe` : on le ramene au format
+  // v2 AVANT de valider, pour n'avoir qu'une seule forme a controler ensuite.
+  const event = migrateEventToV2({ ...raw })
+
+  if (!isNonEmptyString(event.id)) invalid(`${path}.id`, 'identifiant manquant')
+  if (!isNonEmptyString(event.title)) invalid(`${path}.title`, 'titre manquant')
+  if (!isIsoDate(event.startDate)) invalid(`${path}.startDate`, 'date de debut invalide')
+  if (event.endDate !== undefined && !isIsoDate(event.endDate)) {
+    invalid(`${path}.endDate`, 'date de fin invalide')
+  }
 
   return {
-    id: raw.id,
-    title: raw.title,
-    // Les valeurs d'enumeration inconnues sont ramenees a un repli sur : un
-    // fichier issu d'une version future ne doit pas faire echouer l'import.
-    type: isOneOf(raw.type, EVENT_TYPES) ? raw.type : 'autre',
-    startDate: raw.startDate,
-    endDate: raw.endDate,
-    location: typeof raw.location === 'string' ? raw.location : '',
-    description: typeof raw.description === 'string' ? raw.description : '',
-    status: isOneOf(raw.status, EVENT_STATUSES) ? raw.status : 'planifie',
-    ...(typeof raw.participants === 'number' ? { participants: raw.participants } : {}),
-    ...(isNonEmptyString(raw.tripId) ? { tripId: raw.tripId } : {}),
-    ...(typeof raw.budget === 'number' ? { budget: raw.budget } : {}),
-    createdAt: isIsoDate(raw.createdAt) ? raw.createdAt : raw.startDate,
-    updatedAt: isIsoDate(raw.updatedAt) ? raw.updatedAt : raw.startDate,
+    id: event.id,
+    title: event.title,
+    // Les valeurs d'enumeration inconnues sont ramenees a un repli : un fichier
+    // issu d'une version future ne doit pas faire echouer l'import.
+    category: isOneOf(event.category, EVENT_CATEGORIES) ? event.category : 'autre',
+    startDate: event.startDate,
+    ...(isIsoDate(event.endDate) ? { endDate: event.endDate } : {}),
+    allDay: event.allDay === true,
+    ...(isNonEmptyString(event.location) ? { location: event.location } : {}),
+    ...(isNonEmptyString(event.description) ? { description: event.description } : {}),
+    ...(isNonEmptyString(event.imageKey) ? { imageKey: event.imageKey } : {}),
+    status: isOneOf(event.status, EVENT_STATUSES) ? event.status : 'planifie',
+    ...(typeof event.participants === 'number' ? { participants: event.participants } : {}),
+    ...(isNonEmptyString(event.tripId) ? { tripId: event.tripId } : {}),
+    ...(typeof event.budget === 'number' ? { budget: event.budget } : {}),
+    createdAt: isIsoDate(event.createdAt) ? event.createdAt : event.startDate,
+    updatedAt: isIsoDate(event.updatedAt) ? event.updatedAt : event.startDate,
   }
 }
 

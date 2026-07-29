@@ -1,6 +1,7 @@
 import type { IconName } from '@/components/icons/paths'
 import type { ChipTone } from '@/components/ui/IconChip'
-import { ROUTES } from '@/navigation/routes'
+import type { EventCategory } from '@/models'
+import { ROUTES, eventsPath } from '@/navigation/routes'
 
 export interface Shortcut {
   id: string
@@ -8,13 +9,13 @@ export interface Shortcut {
   hint: string
   icon: IconName
   tone: ChipTone
-  /**
-   * Destination.
-   * `null` = rubrique prevue mais non implementee en V0.1 : le tap affiche un
-   * message « bientot disponible » plutot qu'un ecran vide.
-   */
-  to: string | null
+  /** Destination : la plupart ouvrent la liste avec un filtre deja actif. */
+  to: string
+  /** Rubrique prevue mais non implementee : le raccourci l'annonce clairement. */
+  soon?: boolean
 }
+
+const byCategory = (category: EventCategory) => eventsPath({ category })
 
 /** Les six raccourcis de l'accueil. */
 export const SHORTCUTS: Shortcut[] = [
@@ -24,7 +25,7 @@ export const SHORTCUTS: Shortcut[] = [
     hint: 'Destinations & sejours',
     icon: 'avion',
     tone: 'sky',
-    to: ROUTES.trips,
+    to: byCategory('voyage'),
   },
   {
     id: 'sorties',
@@ -32,7 +33,7 @@ export const SHORTCUTS: Shortcut[] = [
     hint: 'Les bons plans',
     icon: 'cocktail',
     tone: 'lavender',
-    to: ROUTES.events,
+    to: byCategory('soiree'),
   },
   {
     id: 'concerts',
@@ -40,30 +41,30 @@ export const SHORTCUTS: Shortcut[] = [
     hint: 'Scenes & festivals',
     icon: 'musique',
     tone: 'blush',
-    to: ROUTES.events,
+    to: byCategory('concert'),
   },
   {
-    id: 'cadeaux',
-    label: 'Cadeaux & a ramener',
-    hint: 'Ne rien oublier',
-    icon: 'cadeau',
+    id: 'weekends',
+    label: 'Week-ends',
+    hint: 'Escapades courtes',
+    icon: 'valise',
     tone: 'apricot',
-    to: null,
+    to: byCategory('weekend'),
   },
   {
-    id: 'budget',
-    label: 'Budget',
-    hint: 'Depenses par sortie',
-    icon: 'portefeuille',
+    id: 'passes',
+    label: 'Deja vecus',
+    hint: 'Tes souvenirs',
+    icon: 'horloge',
     tone: 'mint',
-    to: null,
+    to: eventsPath({ scope: 'passes' }),
   },
   {
-    id: 'documents',
-    label: 'Documents & billets',
-    hint: 'Billets & reservations',
-    icon: 'ticket',
+    id: 'agenda',
+    label: 'Agenda',
+    hint: 'Vue mensuelle',
+    icon: 'calendrier',
     tone: 'sage',
-    to: null,
+    to: ROUTES.agenda,
   },
 ]

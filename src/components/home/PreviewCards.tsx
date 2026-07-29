@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { IconChip } from '@/components/ui'
 import { DOCUMENT_VISUALS } from '@/config/visuals'
-import type { MonthBudget } from '@/hooks/useDashboard'
-import type { Reminder, TravelDocument, Trip } from '@/models'
+import type { MonthSummary } from '@/hooks/useDashboard'
+import type { AppEvent, Reminder, TravelDocument, Trip } from '@/models'
 import { formatCountdown, formatDateRange } from '@/utils/date'
-import { formatCurrency, pluralize } from '@/utils/format'
+import { pluralize } from '@/utils/format'
 
 /** Enveloppe commune des petites cartes d'apercu. */
 function PreviewCard({
@@ -31,14 +31,26 @@ function PreviewCard({
 
 /* --- Voyage a venir ------------------------------------------------------ */
 
-export function UpcomingTripPreview({ trip }: { trip: Trip | null }) {
+export function UpcomingTripPreview({
+  tripEvent,
+  trip,
+}: {
+  tripEvent: AppEvent | null
+  trip: Trip | null
+}) {
+  // Priorite a un evenement de categorie « voyage » saisi par l'utilisateur ;
+  // a defaut, on retombe sur la table `trips` heritee de la V0.1.
+  const destination = tripEvent?.location ?? tripEvent?.title ?? trip?.destination ?? trip?.title
+  const start = tripEvent?.startDate ?? trip?.startDate
+  const end = tripEvent?.endDate ?? tripEvent?.startDate ?? trip?.endDate
+
   return (
     <PreviewCard title="Voyage a venir" icon="avion" tone="sky">
-      {trip ? (
+      {destination && start ? (
         <div>
-          <p className="preview-card__primary">{trip.destination || trip.title}</p>
+          <p className="preview-card__primary">{destination}</p>
           <p className="preview-card__secondary">
-            {formatDateRange(trip.startDate, trip.endDate)} · {formatCountdown(trip.startDate)}
+            {formatDateRange(start, end ?? start)} · {formatCountdown(start)}
           </p>
         </div>
       ) : (
@@ -48,35 +60,18 @@ export function UpcomingTripPreview({ trip }: { trip: Trip | null }) {
   )
 }
 
-/* --- Budget du mois ------------------------------------------------------- */
+/* --- Ce mois-ci ----------------------------------------------------------- */
 
-export function MonthBudgetPreview({
-  budget,
-  currency,
-}: {
-  budget: MonthBudget
-  currency: string
-}) {
-  // Repere visuel indicatif : la gestion detaillee du budget arrive plus tard.
-  const REFERENCE = 600
-  const ratio = Math.min(1, budget.total / REFERENCE)
-
+export function MonthSummaryPreview({ month }: { month: MonthSummary }) {
   return (
-    <PreviewCard title="Budget du mois" icon="portefeuille" tone="mint">
+    <PreviewCard title="Ce mois-ci" icon="calendrier" tone="mint">
       <div>
-        <p className="preview-card__primary">{formatCurrency(budget.total, currency)}</p>
-        <p className="preview-card__secondary">
-          {budget.eventCount > 0
-            ? `${pluralize(budget.eventCount, 'sortie')} en ${budget.label}`
-            : `Rien de prevu en ${budget.label}`}
+        <p className="preview-card__primary">
+          {month.count > 0 ? pluralize(month.count, 'evenement') : 'Rien de prevu'}
         </p>
-      </div>
-      <div
-        className="budget-bar"
-        role="img"
-        aria-label={`Budget previsionnel : ${formatCurrency(budget.total, currency)}`}
-      >
-        <div className="budget-bar__fill" style={{ width: `${Math.max(6, ratio * 100)}%` }} />
+        <p className="preview-card__secondary">
+          {month.count > 0 ? `Prevus en ${month.label}` : `Ton mois de ${month.label} est libre`}
+        </p>
       </div>
     </PreviewCard>
   )

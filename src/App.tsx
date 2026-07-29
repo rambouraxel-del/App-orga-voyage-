@@ -7,6 +7,7 @@ import { ROUTES } from '@/navigation/routes'
 import { AgendaPage } from '@/pages/AgendaPage'
 import { BackupPage } from '@/pages/BackupPage'
 import { EventDetailPage } from '@/pages/EventDetailPage'
+import { EventFormPage } from '@/pages/EventFormPage'
 import { EventsPage } from '@/pages/EventsPage'
 import { HomePage } from '@/pages/HomePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -54,7 +55,12 @@ export default function App() {
             <Route path={ROUTES.home} element={<HomePage />} />
             <Route path={ROUTES.agenda} element={<AgendaPage />} />
             <Route path={ROUTES.events} element={<EventsPage />} />
+            {/* `/evenements/nouveau` est declare avant `/evenements/:id` par
+                lisibilite ; React Router privilegie de toute facon le segment
+                statique sur le segment dynamique. */}
+            <Route path={ROUTES.eventNew} element={<EventFormPage />} />
             <Route path={ROUTES.eventDetail} element={<EventDetailPage />} />
+            <Route path={ROUTES.eventEdit} element={<EventFormPage />} />
             <Route path={ROUTES.trips} element={<TripsPage />} />
             <Route path={ROUTES.backup} element={<BackupPage />} />
             <Route path="/index.html" element={<Navigate to={ROUTES.home} replace />} />
