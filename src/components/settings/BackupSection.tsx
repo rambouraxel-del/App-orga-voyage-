@@ -1,10 +1,10 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { Icon } from '@/components/icons/Icon'
-import { Alert, Button, Card, ConfirmSheet, IconChip, SkeletonBlock, StateBlock } from '@/components/ui'
-import { APP_VERSION } from '@/config/app'
+import { Alert, Button, ConfirmSheet, IconChip, SkeletonBlock, StateBlock } from '@/components/ui'
 import { db } from '@/db/database'
 import { settingsRepository } from '@/db/repositories'
 import { useLiveData } from '@/hooks/useLiveData'
+import { BACKUP_SECTION_ID } from '@/navigation/routes'
 import { ERROR_MESSAGES, toUserMessage } from '@/services/errors'
 import { exportBackup } from '@/services/exportService'
 import { applyImport, prepareImport, type BackupPreview } from '@/services/importService'
@@ -12,27 +12,31 @@ import { formatDateTime } from '@/utils/date'
 
 type Feedback = { tone: 'success' | 'error'; message: string } | null
 
-export function BackupPage() {
+/**
+ * Module de sauvegarde complet, deplace depuis l'ancienne page Sauvegarde vers
+ * les Parametres. Le comportement est strictement identique a la V0.2 :
+ * export JSON, import valide avec confirmation, refus propre des fichiers
+ * incorrects, horodatage de la derniere sauvegarde.
+ */
+export function BackupSection() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [feedback, setFeedback] = useState<Feedback>(null)
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
-  /** Sauvegarde lue et validee, en attente de confirmation de l'utilisateur. */
   const [pendingImport, setPendingImport] = useState<BackupPreview | null>(null)
 
   const { data, loading, error } = useLiveData(async () => {
-    const [settings, events, trips, reminders, documents] = await Promise.all([
+    const [settings, events, tasks, participants, items, expenses] = await Promise.all([
       settingsRepository.get(),
       db.events.count(),
-      db.trips.count(),
-      db.reminders.count(),
-      db.documents.count(),
+      db.tasks.count(),
+      db.participants.count(),
+      db.items.count(),
+      db.expenses.count(),
     ])
-    return { settings, counts: { events, trips, reminders, documents } }
+    return { settings, counts: { events, tasks, participants, items, expenses } }
   })
-
-  /* --- Export ---------------------------------------------------------- */
 
   async function handleExport() {
     setFeedback(null)
@@ -50,28 +54,23 @@ export function BackupPage() {
     }
   }
 
-  /* --- Import : etape 1, lecture + validation ---------------------------- */
-
   async function handleFileSelected(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
-    // Le champ est reinitialise tout de suite : reselectionner le meme fichier
-    // doit redeclencher l'evenement `change`.
+    // Reinitialise tout de suite : reselectionner le meme fichier doit
+    // redeclencher l'evenement `change`.
     event.target.value = ''
     if (!file) return
 
     setFeedback(null)
     setImporting(true)
     try {
-      const preview = await prepareImport(file)
-      setPendingImport(preview)
+      setPendingImport(await prepareImport(file))
     } catch (cause) {
       setFeedback({ tone: 'error', message: toUserMessage(cause, ERROR_MESSAGES.IMPORT_READ) })
     } finally {
       setImporting(false)
     }
   }
-
-  /* --- Import : etape 2, remplacement confirme ---------------------------- */
 
   async function handleConfirmImport() {
     if (!pendingImport) return
@@ -91,24 +90,13 @@ export function BackupPage() {
     }
   }
 
-  /* --- Rendu -------------------------------------------------------------- */
-
   return (
-    <>
-      <header className="page-header">
-        <div className="page-header__text">
-          <h1 className="page-title">Sauvegarde</h1>
-          <p className="page-subtitle">
-            Exporte un fichier de secours, ou restaure une sauvegarde precedente.
-          </p>
-        </div>
-      </header>
+    <section className="settings-section" id={BACKUP_SECTION_ID}>
+      <div className="section-header">
+        <h2 className="section-title">Sauvegarde</h2>
+      </div>
 
-      {feedback ? (
-        <Alert tone={feedback.tone} className="section">
-          {feedback.message}
-        </Alert>
-      ) : null}
+      {feedback ? <Alert tone={feedback.tone}>{feedback.message}</Alert> : null}
 
       {loading ? (
         <SkeletonBlock height={110} />
@@ -134,16 +122,20 @@ export function BackupPage() {
               <p className="backup-stat__label">Evenements</p>
             </div>
             <div className="backup-stat">
-              <p className="backup-stat__value">{data.counts.trips}</p>
-              <p className="backup-stat__label">Voyages</p>
+              <p className="backup-stat__value">{data.counts.tasks}</p>
+              <p className="backup-stat__label">Taches</p>
             </div>
             <div className="backup-stat">
-              <p className="backup-stat__value">{data.counts.reminders}</p>
-              <p className="backup-stat__label">Pense-betes</p>
+              <p className="backup-stat__value">{data.counts.participants}</p>
+              <p className="backup-stat__label">Participants</p>
             </div>
             <div className="backup-stat">
-              <p className="backup-stat__value">{data.counts.documents}</p>
-              <p className="backup-stat__label">Documents</p>
+              <p className="backup-stat__value">{data.counts.items}</p>
+              <p className="backup-stat__label">A ramener</p>
+            </div>
+            <div className="backup-stat">
+              <p className="backup-stat__value">{data.counts.expenses}</p>
+              <p className="backup-stat__label">Depenses</p>
             </div>
           </div>
 
@@ -188,13 +180,6 @@ export function BackupPage() {
               supprimerait tout.
             </p>
           </div>
-
-          <Card flat className="section">
-            <p className="backup-summary__label">A propos</p>
-            <p className="preview-card__secondary">
-              Mes Aventures v{APP_VERSION} · format de sauvegarde JSON v1
-            </p>
-          </Card>
         </>
       )}
 
@@ -217,12 +202,14 @@ export function BackupPage() {
               <dd>v{pendingImport.appVersion}</dd>
               <dt>Evenements</dt>
               <dd>{pendingImport.counts.events}</dd>
-              <dt>Voyages</dt>
-              <dd>{pendingImport.counts.trips}</dd>
-              <dt>Pense-betes</dt>
-              <dd>{pendingImport.counts.reminders}</dd>
-              <dt>Documents</dt>
-              <dd>{pendingImport.counts.documents}</dd>
+              <dt>Taches</dt>
+              <dd>{pendingImport.counts.tasks}</dd>
+              <dt>Participants</dt>
+              <dd>{pendingImport.counts.participants}</dd>
+              <dt>A ramener</dt>
+              <dd>{pendingImport.counts.items}</dd>
+              <dt>Depenses</dt>
+              <dd>{pendingImport.counts.expenses}</dd>
             </dl>
           ) : null
         }
@@ -231,6 +218,6 @@ export function BackupPage() {
         onConfirm={handleConfirmImport}
         onCancel={() => setPendingImport(null)}
       />
-    </>
+    </section>
   )
 }

@@ -30,6 +30,10 @@ export interface BackupPreview {
     trips: number
     reminders: number
     documents: number
+    tasks: number
+    participants: number
+    items: number
+    expenses: number
   }
 }
 
@@ -51,6 +55,10 @@ export async function prepareImport(file: File): Promise<BackupPreview> {
       trips: backup.data.trips.length,
       reminders: backup.data.reminders?.length ?? 0,
       documents: backup.data.documents?.length ?? 0,
+      tasks: backup.data.tasks?.length ?? 0,
+      participants: backup.data.participants?.length ?? 0,
+      items: backup.data.items?.length ?? 0,
+      expenses: backup.data.expenses?.length ?? 0,
     },
   }
 }
@@ -66,12 +74,32 @@ export interface ImportResult {
  * le vidage des tables et les donnees precedentes restent intactes.
  */
 export async function applyImport(backup: BackupFile): Promise<ImportResult> {
-  const { events, trips, reminders = [], documents = [], settings } = backup.data
+  const {
+    events,
+    trips,
+    reminders = [],
+    documents = [],
+    tasks = [],
+    participants = [],
+    items = [],
+    expenses = [],
+    settings,
+  } = backup.data
 
   try {
     await db.transaction(
       'rw',
-      [db.events, db.trips, db.reminders, db.documents, db.settings],
+      [
+        db.events,
+        db.trips,
+        db.reminders,
+        db.documents,
+        db.tasks,
+        db.participants,
+        db.items,
+        db.expenses,
+        db.settings,
+      ],
       async () => {
         const previous = await db.settings.get(SETTINGS_KEY)
 
@@ -80,6 +108,10 @@ export async function applyImport(backup: BackupFile): Promise<ImportResult> {
           db.trips.clear(),
           db.reminders.clear(),
           db.documents.clear(),
+          db.tasks.clear(),
+          db.participants.clear(),
+          db.items.clear(),
+          db.expenses.clear(),
         ])
 
         const restored: AppSettings = {
@@ -98,6 +130,10 @@ export async function applyImport(backup: BackupFile): Promise<ImportResult> {
           db.trips.bulkPut(trips),
           db.reminders.bulkPut(reminders),
           db.documents.bulkPut(documents),
+          db.tasks.bulkPut(tasks),
+          db.participants.bulkPut(participants),
+          db.items.bulkPut(items),
+          db.expenses.bulkPut(expenses),
           db.settings.put(restored),
         ])
       },
@@ -107,6 +143,14 @@ export async function applyImport(backup: BackupFile): Promise<ImportResult> {
   }
 
   return {
-    itemCount: events.length + trips.length + reminders.length + documents.length,
+    itemCount:
+      events.length +
+      trips.length +
+      reminders.length +
+      documents.length +
+      tasks.length +
+      participants.length +
+      items.length +
+      expenses.length,
   }
 }

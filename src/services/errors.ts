@@ -31,6 +31,11 @@ export const ERROR_MESSAGES = {
   EVENT_CREATE: "L'evenement n'a pas pu etre enregistre. Reessaie dans un instant.",
   EVENT_UPDATE: "Les modifications n'ont pas pu etre enregistrees. Reessaie dans un instant.",
   EVENT_DELETE: "L'evenement n'a pas pu etre supprime. Reessaie dans un instant.",
+  MODULE_NOT_FOUND: (label: string) =>
+    `Cet element (${label}) est introuvable. Il a peut-etre ete supprime depuis un autre onglet.`,
+  MODULE_CREATE: (label: string) => `Cet element (${label}) n'a pas pu etre ajoute. Reessaie.`,
+  MODULE_UPDATE: (label: string) => `Cet element (${label}) n'a pas pu etre modifie. Reessaie.`,
+  MODULE_DELETE: (label: string) => `Cet element (${label}) n'a pas pu etre supprime. Reessaie.`,
   MIGRATION_FAILED:
     "La mise a jour de la base locale a echoue. Tes donnees sont conservees : exporte une sauvegarde depuis l'onglet Sauvegarde, puis relance l'application.",
   IMPORT_WRITE:

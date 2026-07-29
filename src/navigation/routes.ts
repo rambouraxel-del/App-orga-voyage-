@@ -9,8 +9,14 @@ export const ROUTES = {
   eventDetail: '/evenements/:id',
   eventEdit: '/evenements/:id/modifier',
   trips: '/voyages',
-  backup: '/sauvegarde',
+  documents: '/documents',
+  settings: '/parametres',
+  /** Route historique V0.1/V0.2 — redirige vers la section Sauvegarde. */
+  legacyBackup: '/sauvegarde',
 } as const
+
+/** Ancre de la section Sauvegarde dans les Parametres. */
+export const BACKUP_SECTION_ID = 'sauvegarde'
 
 export const eventDetailPath = (id: string) => `/evenements/${encodeURIComponent(id)}`
 export const eventEditPath = (id: string) => `/evenements/${encodeURIComponent(id)}/modifier`
@@ -50,5 +56,5 @@ export const TABS: TabDefinition[] = [
   { to: ROUTES.agenda, label: 'Agenda', icon: 'calendrier', ariaLabel: 'Agenda' },
   { to: ROUTES.events, label: 'Evenements', icon: 'etoiles', ariaLabel: 'Evenements' },
   { to: ROUTES.trips, label: 'Voyages', icon: 'avion', ariaLabel: 'Voyages' },
-  { to: ROUTES.backup, label: 'Sauvegarde', icon: 'sauvegarde', ariaLabel: 'Sauvegarde' },
+  { to: ROUTES.documents, label: 'Documents', icon: 'dossier', ariaLabel: 'Documents' },
 ]

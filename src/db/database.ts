@@ -1,6 +1,16 @@
 import Dexie, { type Table } from 'dexie'
 import { DB_NAME } from '@/config/app'
-import type { AppEvent, AppSettings, Reminder, TravelDocument, Trip } from '@/models'
+import type {
+  AppEvent,
+  AppSettings,
+  EventItem,
+  EventTask,
+  Expense,
+  Participant,
+  Reminder,
+  TravelDocument,
+  Trip,
+} from '@/models'
 import { LEGACY_STATUS_TO_STATUS, LEGACY_TYPE_TO_CATEGORY } from '@/models'
 
 /**
@@ -14,6 +24,10 @@ import { LEGACY_STATUS_TO_STATUS, LEGACY_TYPE_TO_CATEGORY } from '@/models'
 export class AppDatabase extends Dexie {
   events!: Table<AppEvent, string>
   trips!: Table<Trip, string>
+  tasks!: Table<EventTask, string>
+  participants!: Table<Participant, string>
+  items!: Table<EventItem, string>
+  expenses!: Table<Expense, string>
   reminders!: Table<Reminder, string>
   documents!: Table<TravelDocument, string>
   settings!: Table<AppSettings, string>
@@ -51,6 +65,21 @@ export class AppDatabase extends Dexie {
             migrateEventToV2(event)
           })
       })
+    // --- v3 (V0.3) -------------------------------------------------------
+    // Quatre nouvelles tables rattachees aux evenements. Aucune donnee
+    // existante n'est modifiee : Dexie cree simplement les magasins manquants,
+    // les evenements, voyages et parametres restent intacts.
+    this.version(3).stores({
+      events: 'id, startDate, endDate, category, status, tripId',
+      trips: 'id, startDate, endDate, status',
+      tasks: 'id, eventId, done, dueDate, order',
+      participants: 'id, eventId, status',
+      items: 'id, eventId, kind, status',
+      expenses: 'id, eventId, category, paid, date',
+      reminders: 'id, category, done, eventId, tripId',
+      documents: 'id, kind, date, eventId, tripId',
+      settings: 'key',
+    })
   }
 }
 

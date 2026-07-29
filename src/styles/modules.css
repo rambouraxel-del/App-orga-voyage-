@@ -1,0 +1,408 @@
+/* Modules de la fiche événement : organisation, participants, budget, à ramener. */
+
+.module {
+  margin-top: var(--s-5);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-xs);
+  /* Ancre de défilement décalée pour ne pas passer sous l'en-tête. */
+  scroll-margin-top: var(--s-5);
+}
+
+.module__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.module__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.module__icon {
+  flex: none;
+  color: var(--c-leather-soft);
+}
+
+.module__title {
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: var(--c-leather-dark);
+}
+
+.module__add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  flex: none;
+  min-height: 38px;
+  padding: 0 var(--s-3);
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+  color: var(--c-leather-dark);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: transform var(--transition);
+}
+
+.module__add:active {
+  transform: scale(0.96);
+}
+
+.module__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+.module__summary-text {
+  font-size: 0.85rem;
+  color: var(--c-ink-soft);
+}
+
+.module__summary-alert {
+  color: var(--c-danger);
+  font-weight: 600;
+}
+
+.module__empty {
+  margin-top: var(--s-3);
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  border: 1px dashed var(--border-strong);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--c-ink-soft);
+}
+
+.module__body {
+  margin-top: var(--s-4);
+}
+
+/* --- Barre de progression (tâches et budget) ------------------------------ */
+
+.progress {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--c-beige);
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--c-sage), var(--c-leather-soft));
+  transition: width var(--transition);
+}
+
+.progress__fill--over {
+  background: linear-gradient(90deg, var(--c-apricot), var(--c-danger));
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+/* --- Liste de tâches ------------------------------------------------------- */
+
+.task-list,
+.row-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  min-width: 0;
+}
+
+.task--late {
+  background: var(--c-danger-bg);
+}
+
+.task__check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--c-leather);
+}
+
+.task--done .task__check {
+  background: var(--c-leather);
+  border-color: var(--c-leather);
+  color: var(--c-on-leather);
+}
+
+.task__body {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: var(--s-1) 0;
+}
+
+.task__title {
+  display: block;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+}
+
+/* Tâche terminée : barrée ET estompée, la couleur n'est pas le seul signal. */
+.task--done .task__title {
+  text-decoration: line-through;
+  color: var(--c-ink-faint);
+}
+
+.task__meta {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.78rem;
+  color: var(--c-ink-soft);
+}
+
+.task__move {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: 2px;
+}
+
+.task__move button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  color: var(--c-taupe-dark);
+  background: var(--surface);
+}
+
+.task__move button:disabled {
+  opacity: 0.3;
+}
+
+/* --- Lignes génériques (participants, objets, dépenses) -------------------- */
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: var(--tap-target);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  text-align: left;
+  transition: transform var(--transition);
+}
+
+.row:active {
+  transform: scale(0.985);
+}
+
+.row__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.row__title {
+  display: block;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+}
+
+.row__meta {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.78rem;
+  color: var(--c-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.row__trailing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s-1);
+  flex: none;
+}
+
+.row__amount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--c-leather-dark);
+  white-space: nowrap;
+}
+
+/* --- Chiffres du budget ---------------------------------------------------- */
+
+.budget-figures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-2);
+}
+
+.budget-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-3) var(--s-2);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  text-align: center;
+  min-width: 0;
+}
+
+.budget-figure__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--c-taupe);
+}
+
+.budget-figure__value {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--c-leather-dark);
+  overflow-wrap: anywhere;
+}
+
+.budget-figure__value--over {
+  color: var(--c-danger);
+}
+
+/* --- Bouton textuel discret ------------------------------------------------ */
+
+.link-button {
+  align-self: flex-start;
+  min-height: var(--tap-target);
+  padding: var(--s-2) 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--c-leather);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --- Feuille de saisie ------------------------------------------------------ */
+
+.sheet--form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  /* Le clavier iOS réduit fortement la hauteur utile : la feuille défile. */
+  max-height: 88dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+/* --- Page Documents --------------------------------------------------------- */
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.feature-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--c-ink-soft);
+}
+
+.feature-list__bullet {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: var(--r-pill);
+  background: var(--c-apricot);
+}
+
+/* --- Paramètres -------------------------------------------------------------- */
+
+.settings-section {
+  margin-top: var(--s-7);
+  scroll-margin-top: var(--s-5);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-xs);
+}
+
+.settings-row__text {
+  min-width: 0;
+}
+
+.settings-row__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-taupe-dark);
+}
+
+.settings-row__value {
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--c-leather-dark);
+  overflow-wrap: anywhere;
+}
+
+.settings-hint {
+  margin-top: var(--s-3);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--c-ink-faint);
+}
+
+/* --- Indicateurs de la fiche --------------------------------------------------- */
+
+.detail-card__indicators {
+  margin-top: var(--s-3);
+}

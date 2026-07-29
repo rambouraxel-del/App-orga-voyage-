@@ -150,11 +150,42 @@ export const eventsRepository = {
     return copy
   },
 
+  /**
+   * Supprime un evenement ET tout ce qui lui est rattache (taches,
+   * participants, objets, depenses).
+   *
+   * Le tout dans une transaction unique : on ne peut pas se retrouver avec un
+   * evenement supprime mais ses depenses orphelines en base.
+   */
   async remove(id: EntityId): Promise<void> {
     try {
-      await db.events.delete(id)
+      await db.transaction(
+        'rw',
+        [db.events, db.tasks, db.participants, db.items, db.expenses],
+        async () => {
+          await Promise.all([
+            db.tasks.where('eventId').equals(id).delete(),
+            db.participants.where('eventId').equals(id).delete(),
+            db.items.where('eventId').equals(id).delete(),
+            db.expenses.where('eventId').equals(id).delete(),
+          ])
+          await db.events.delete(id)
+        },
+      )
     } catch (cause) {
       throw new AppError('EVENT_DELETE', ERROR_MESSAGES.EVENT_DELETE, { cause })
     }
+  },
+
+  /** Met a jour la seule enveloppe budgetaire previsionnelle. */
+  async setBudget(id: EntityId, budget: number | undefined): Promise<AppEvent> {
+    const existing = await this.getByIdOrFail(id)
+    const updated: AppEvent = { ...existing, budget, updatedAt: nowIso() }
+    try {
+      await db.events.put(updated)
+    } catch (cause) {
+      throw new AppError('EVENT_UPDATE', ERROR_MESSAGES.EVENT_UPDATE, { cause })
+    }
+    return updated
   },
 }

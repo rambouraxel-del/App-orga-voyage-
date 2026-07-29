@@ -129,3 +129,112 @@ describe('import d’une sauvegarde V0.1', () => {
     expect(() => parseBackupText(JSON.stringify({ hello: 'world' }))).toThrow()
   })
 })
+
+/* ------------------------------------------------------------------ */
+/* V0.3 — modules et compatibilite ascendante                          */
+/* ------------------------------------------------------------------ */
+
+describe('sauvegardes et modules V0.3', () => {
+  const modernEvent = {
+    id: 'evt-1',
+    title: 'Week-end',
+    category: 'weekend',
+    startDate: '2026-08-02T06:30:00.000Z',
+    allDay: false,
+    status: 'confirme',
+    createdAt: '2026-07-28T06:00:00.000Z',
+    updatedAt: '2026-07-28T06:00:00.000Z',
+  }
+
+  it('accepte une sauvegarde v1 sans aucun module', () => {
+    const backup = validateBackup(makeBackup(1, [legacyEvent]))
+    // Les collections absentes deviennent des tableaux vides : exactement
+    // l'etat d'un evenement dont aucun module n'est utilise.
+    expect(backup.data.tasks).toEqual([])
+    expect(backup.data.participants).toEqual([])
+    expect(backup.data.items).toEqual([])
+    expect(backup.data.expenses).toEqual([])
+  })
+
+  it('accepte une sauvegarde v2 sans aucun module', () => {
+    const backup = validateBackup(makeBackup(2, [modernEvent]))
+    expect(backup.data.events).toHaveLength(1)
+    expect(backup.data.tasks).toEqual([])
+    expect(backup.data.expenses).toEqual([])
+  })
+
+  it('lit les modules d’une sauvegarde v3', () => {
+    const raw = makeBackup(3, [modernEvent]) as Record<string, any>
+    raw.data.tasks = [
+      {
+        id: 't1', eventId: 'evt-1', title: 'Reserver le train', done: false,
+        priority: 'haute', order: 0,
+        createdAt: '2026-07-28T06:00:00.000Z', updatedAt: '2026-07-28T06:00:00.000Z',
+      },
+    ]
+    raw.data.participants = [
+      {
+        id: 'p1', eventId: 'evt-1', name: 'Camille', status: 'confirme',
+        createdAt: '2026-07-28T06:00:00.000Z', updatedAt: '2026-07-28T06:00:00.000Z',
+      },
+    ]
+    raw.data.items = [
+      {
+        id: 'i1', eventId: 'evt-1', label: 'Limoncello', kind: 'a-ramener',
+        quantity: 2, estimatedPrice: 15, status: 'a-prevoir', countInBudget: true,
+        createdAt: '2026-07-28T06:00:00.000Z', updatedAt: '2026-07-28T06:00:00.000Z',
+      },
+    ]
+    raw.data.expenses = [
+      {
+        id: 'e1', eventId: 'evt-1', label: 'Train', amount: 49.9,
+        category: 'transport', paid: true,
+        createdAt: '2026-07-28T06:00:00.000Z', updatedAt: '2026-07-28T06:00:00.000Z',
+      },
+    ]
+
+    const backup = validateBackup(raw)
+    expect(backup.data.tasks?.[0]?.priority).toBe('haute')
+    expect(backup.data.participants?.[0]?.status).toBe('confirme')
+    expect(backup.data.items?.[0]?.quantity).toBe(2)
+    expect(backup.data.items?.[0]?.countInBudget).toBe(true)
+    expect(backup.data.expenses?.[0]?.amount).toBe(49.9)
+  })
+
+  it('applique des valeurs de repli aux champs inconnus des modules', () => {
+    const raw = makeBackup(3, [modernEvent]) as Record<string, any>
+    raw.data.tasks = [
+      {
+        id: 't1', eventId: 'evt-1', title: 'Sans priorite', priority: 'urgente',
+        createdAt: '2026-07-28T06:00:00.000Z', updatedAt: '2026-07-28T06:00:00.000Z',
+      },
+    ]
+    raw.data.expenses = [
+      {
+        id: 'e1', eventId: 'evt-1', label: 'Montant casse', amount: 'beaucoup',
+        category: 'inconnue',
+        createdAt: '2026-07-28T06:00:00.000Z', updatedAt: '2026-07-28T06:00:00.000Z',
+      },
+    ]
+
+    const backup = validateBackup(raw)
+    expect(backup.data.tasks?.[0]?.priority).toBe('normale')
+    expect(backup.data.tasks?.[0]?.done).toBe(false)
+    // Un montant illisible vaut 0 plutot que de propager un NaN dans les totaux.
+    expect(backup.data.expenses?.[0]?.amount).toBe(0)
+    expect(backup.data.expenses?.[0]?.category).toBe('autre')
+    expect(backup.data.expenses?.[0]?.paid).toBe(false)
+  })
+
+  it('refuse une tache orpheline, sans evenement parent', () => {
+    const raw = makeBackup(3, [modernEvent]) as Record<string, any>
+    raw.data.tasks = [{ id: 't1', title: 'Orpheline' }]
+    expect(() => validateBackup(raw)).toThrow()
+  })
+
+  it('refuse un module qui n’est pas un tableau', () => {
+    const raw = makeBackup(3, [modernEvent]) as Record<string, any>
+    raw.data.expenses = { pas: 'un tableau' }
+    expect(() => validateBackup(raw)).toThrow()
+  })
+})

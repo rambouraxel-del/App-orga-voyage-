@@ -1,6 +1,14 @@
 import type { ReactNode } from 'react'
 
-export type BadgeTone = 'neutral' | 'leather' | 'sage' | 'sky' | 'blush' | 'apricot' | 'lavender'
+export type BadgeTone =
+  | 'neutral'
+  | 'leather'
+  | 'sage'
+  | 'sky'
+  | 'blush'
+  | 'apricot'
+  | 'lavender'
+  | 'mint'
 
 export interface BadgeProps {
   tone?: BadgeTone

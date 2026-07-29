@@ -7,13 +7,18 @@ import { AppError, ERROR_MESSAGES } from './errors'
 
 /** Construit l'objet de sauvegarde a partir du contenu actuel de la base. */
 export async function buildBackup(): Promise<BackupFile> {
-  const [events, trips, reminders, documents, settings] = await Promise.all([
-    db.events.toArray(),
-    db.trips.toArray(),
-    db.reminders.toArray(),
-    db.documents.toArray(),
-    settingsRepository.get(),
-  ])
+  const [events, trips, reminders, documents, tasks, participants, items, expenses, settings] =
+    await Promise.all([
+      db.events.toArray(),
+      db.trips.toArray(),
+      db.reminders.toArray(),
+      db.documents.toArray(),
+      db.tasks.toArray(),
+      db.participants.toArray(),
+      db.items.toArray(),
+      db.expenses.toArray(),
+      settingsRepository.get(),
+    ])
 
   return {
     signature: BACKUP_SIGNATURE,
@@ -25,6 +30,10 @@ export async function buildBackup(): Promise<BackupFile> {
       trips,
       reminders,
       documents,
+      tasks,
+      participants,
+      items,
+      expenses,
       settings: {
         displayName: settings.displayName,
         lastBackupAt: settings.lastBackupAt,
@@ -99,7 +108,11 @@ export async function exportBackup(): Promise<ExportResult> {
       backup.data.events.length +
       backup.data.trips.length +
       (backup.data.reminders?.length ?? 0) +
-      (backup.data.documents?.length ?? 0),
+      (backup.data.documents?.length ?? 0) +
+      (backup.data.tasks?.length ?? 0) +
+      (backup.data.participants?.length ?? 0) +
+      (backup.data.items?.length ?? 0) +
+      (backup.data.expenses?.length ?? 0),
     backedUpAt,
   }
 }

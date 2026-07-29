@@ -3,7 +3,11 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { EventCard } from '@/components/events/EventCard'
 import { Icon } from '@/components/icons/Icon'
 import { Alert, Button, PageHeader, SkeletonBlock, StateBlock } from '@/components/ui'
+import { db } from '@/db/database'
 import { eventsRepository } from '@/db/repositories'
+import { computeBudget } from '@/utils/budgetRules'
+import { computeProgress } from '@/utils/taskRules'
+import type { EventIndicators } from '@/components/events/EventCard'
 import { useLiveData } from '@/hooks/useLiveData'
 import { EVENT_CATEGORIES, EVENT_CATEGORY_LABELS, type EventCategory } from '@/models'
 import { eventNewPath } from '@/navigation/routes'
@@ -50,7 +54,42 @@ export function EventsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flash])
 
-  const { data, loading, error } = useLiveData(() => eventsRepository.listAll())
+  // Une seule requete pour la liste ET les indicateurs : on evite N requetes
+  // par carte, ce qui garderait la page fluide meme avec beaucoup de donnees.
+  const { data, loading, error } = useLiveData(async () => {
+    const [list, tasks, participants, expenses, items] = await Promise.all([
+      eventsRepository.listAll(),
+      db.tasks.toArray(),
+      db.participants.toArray(),
+      db.expenses.toArray(),
+      db.items.toArray(),
+    ])
+
+    const indicators = new Map<string, EventIndicators>()
+    for (const event of list) {
+      const eventTasks = tasks.filter((t) => t.eventId === event.id)
+      const eventParticipants = participants.filter((p) => p.eventId === event.id)
+      const budget = computeBudget(
+        event.budget,
+        expenses.filter((e) => e.eventId === event.id),
+        items.filter((i) => i.eventId === event.id),
+      )
+      indicators.set(event.id, {
+        taskPercent: eventTasks.length > 0 ? computeProgress(eventTasks).percent : null,
+        participants:
+          eventParticipants.length > 0
+            ? {
+                confirmed: eventParticipants.filter((p) => p.status === 'confirme').length,
+                total: eventParticipants.length,
+              }
+            : null,
+        budgetPercent: budget.hasPlan ? budget.percentUsed : null,
+        budgetOver: budget.overBudget,
+      })
+    }
+
+    return { list, indicators }
+  })
 
   function updateParam(key: string, value: string | null) {
     const next = new URLSearchParams(searchParams)
@@ -59,7 +98,7 @@ export function EventsPage() {
     setSearchParams(next, { replace: true })
   }
 
-  const events = useMemo(() => data ?? [], [data])
+  const events = useMemo(() => data?.list ?? [], [data])
 
   const visible = useMemo(() => {
     const now = new Date()
@@ -215,9 +254,16 @@ export function EventsPage() {
             {visible.length} evenement{visible.length > 1 ? 's' : ''}
           </p>
           <div className="stack--lg stack">
-            {visible.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
+            {visible.map((event) => {
+              const indicators = data?.indicators.get(event.id)
+              return (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  {...(indicators ? { indicators } : {})}
+                />
+              )
+            })}
           </div>
         </section>
       )}

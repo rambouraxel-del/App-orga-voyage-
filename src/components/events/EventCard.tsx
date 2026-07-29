@@ -7,14 +7,26 @@ import { eventDetailPath } from '@/navigation/routes'
 import { formatDateRange, formatTime } from '@/utils/date'
 import { dayCount, isMultiDay, isOngoingEvent, isPastEvent } from '@/utils/eventRules'
 
+export interface EventIndicators {
+  /** Progression des taches, en pourcentage. `null` si aucune tache. */
+  taskPercent: number | null
+  /** Participants confirmes / total. `null` si aucun participant. */
+  participants: { confirmed: number; total: number } | null
+  /** Pourcentage du budget consomme. `null` si aucune enveloppe definie. */
+  budgetPercent: number | null
+  budgetOver: boolean
+}
+
 export interface EventCardProps {
   event: AppEvent
+  /** Indicateurs synthetiques des modules. Absents = rien a afficher. */
+  indicators?: EventIndicators
   /** Masque la date (la vue liste l'affiche deja en en-tete de groupe). */
   hideDate?: boolean
 }
 
 /** Carte d'evenement cliquable, menant a la fiche detaillee. */
-export function EventCard({ event, hideDate = false }: EventCardProps) {
+export function EventCard({ event, hideDate = false, indicators }: EventCardProps) {
   const visual = EVENT_VISUALS[event.category]
   const past = isPastEvent(event)
   const ongoing = isOngoingEvent(event)
@@ -60,6 +72,21 @@ export function EventCard({ event, hideDate = false }: EventCardProps) {
         {event.allDay ? <Badge tone="sky">Journee entiere</Badge> : null}
         {ongoing ? <Badge tone="sage">En cours</Badge> : null}
         {past ? <Badge>Passe</Badge> : null}
+        {indicators?.taskPercent !== null && indicators?.taskPercent !== undefined ? (
+          <Badge tone={indicators.taskPercent === 100 ? 'sage' : 'apricot'}>
+            Prep. {indicators.taskPercent} %
+          </Badge>
+        ) : null}
+        {indicators?.participants ? (
+          <Badge tone="sky">
+            {indicators.participants.confirmed}/{indicators.participants.total} confirmes
+          </Badge>
+        ) : null}
+        {indicators?.budgetPercent !== null && indicators?.budgetPercent !== undefined ? (
+          <Badge tone={indicators.budgetOver ? 'blush' : 'mint'}>
+            Budget {indicators.budgetPercent} %
+          </Badge>
+        ) : null}
         {event.status === 'annule' || event.status === 'termine' ? (
           <Badge tone={EVENT_STATUS_TONES[event.status]}>
             {EVENT_STATUS_LABELS[event.status]}

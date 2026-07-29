@@ -3,11 +3,20 @@ import {
   BACKUP_SIGNATURE,
   EVENT_CATEGORIES,
   EVENT_STATUSES,
+  EXPENSE_CATEGORIES,
+  ITEM_KINDS,
+  ITEM_STATUSES,
+  PARTICIPANT_STATUSES,
+  TASK_PRIORITIES,
   TRIP_STATUSES,
   REMINDER_CATEGORIES,
   DOCUMENT_KINDS,
   type AppEvent,
   type BackupFile,
+  type EventItem,
+  type EventTask,
+  type Expense,
+  type Participant,
   type Reminder,
   type TravelDocument,
   type Trip,
@@ -139,6 +148,89 @@ function parseDocument(raw: unknown, index: number): TravelDocument {
 }
 
 /* ------------------------------------------------------------------ */
+/* Modules V0.3 : taches, participants, objets, depenses               */
+/* ------------------------------------------------------------------ */
+
+/** Champs communs a toutes les entites rattachees a un evenement. */
+function parseChildBase(raw: Record<string, unknown>, path: string) {
+  if (!isNonEmptyString(raw.id)) invalid(`${path}.id`, 'identifiant manquant')
+  if (!isNonEmptyString(raw.eventId)) invalid(`${path}.eventId`, 'evenement parent manquant')
+  const stamp = isIsoDate(raw.createdAt) ? raw.createdAt : new Date(0).toISOString()
+  return {
+    id: raw.id,
+    eventId: raw.eventId,
+    createdAt: stamp,
+    updatedAt: isIsoDate(raw.updatedAt) ? raw.updatedAt : stamp,
+  }
+}
+
+/** Nombre fini, ou repli. Protege des `NaN` et `Infinity` d'un fichier bricole. */
+const finiteOr = (value: unknown, fallback: number): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback
+
+function parseTask(raw: unknown, index: number): EventTask {
+  const path = `data.tasks[${index}]`
+  if (!isObject(raw)) invalid(path, 'objet attendu')
+  if (!isNonEmptyString(raw.title)) invalid(`${path}.title`, 'titre manquant')
+  return {
+    ...parseChildBase(raw, path),
+    title: raw.title,
+    done: raw.done === true,
+    ...(isIsoDate(raw.dueDate) ? { dueDate: raw.dueDate } : {}),
+    priority: isOneOf(raw.priority, TASK_PRIORITIES) ? raw.priority : 'normale',
+    order: finiteOr(raw.order, index),
+    ...(isNonEmptyString(raw.note) ? { note: raw.note } : {}),
+  }
+}
+
+function parseParticipant(raw: unknown, index: number): Participant {
+  const path = `data.participants[${index}]`
+  if (!isObject(raw)) invalid(path, 'objet attendu')
+  if (!isNonEmptyString(raw.name)) invalid(`${path}.name`, 'nom manquant')
+  return {
+    ...parseChildBase(raw, path),
+    name: raw.name,
+    ...(isNonEmptyString(raw.contact) ? { contact: raw.contact } : {}),
+    status: isOneOf(raw.status, PARTICIPANT_STATUSES) ? raw.status : 'invite',
+    ...(isNonEmptyString(raw.note) ? { note: raw.note } : {}),
+  }
+}
+
+function parseItem(raw: unknown, index: number): EventItem {
+  const path = `data.items[${index}]`
+  if (!isObject(raw)) invalid(path, 'objet attendu')
+  if (!isNonEmptyString(raw.label)) invalid(`${path}.label`, 'libelle manquant')
+  return {
+    ...parseChildBase(raw, path),
+    label: raw.label,
+    kind: isOneOf(raw.kind, ITEM_KINDS) ? raw.kind : 'a-ramener',
+    ...(isNonEmptyString(raw.forWhom) ? { forWhom: raw.forWhom } : {}),
+    quantity: Math.max(1, Math.round(finiteOr(raw.quantity, 1))),
+    ...(typeof raw.estimatedPrice === 'number' && Number.isFinite(raw.estimatedPrice)
+      ? { estimatedPrice: raw.estimatedPrice }
+      : {}),
+    status: isOneOf(raw.status, ITEM_STATUSES) ? raw.status : 'a-prevoir',
+    ...(isNonEmptyString(raw.note) ? { note: raw.note } : {}),
+    countInBudget: raw.countInBudget === true,
+  }
+}
+
+function parseExpense(raw: unknown, index: number): Expense {
+  const path = `data.expenses[${index}]`
+  if (!isObject(raw)) invalid(path, 'objet attendu')
+  if (!isNonEmptyString(raw.label)) invalid(`${path}.label`, 'libelle manquant')
+  return {
+    ...parseChildBase(raw, path),
+    label: raw.label,
+    amount: finiteOr(raw.amount, 0),
+    category: isOneOf(raw.category, EXPENSE_CATEGORIES) ? raw.category : 'autre',
+    ...(isIsoDate(raw.date) ? { date: raw.date } : {}),
+    ...(isNonEmptyString(raw.note) ? { note: raw.note } : {}),
+    paid: raw.paid === true,
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Validation du fichier complet                                       */
 /* ------------------------------------------------------------------ */
 
@@ -176,6 +268,16 @@ export function validateBackup(raw: unknown): BackupFile {
   if (data.documents !== undefined && !Array.isArray(data.documents)) {
     invalid('data.documents', 'tableau attendu')
   }
+  // Verifications explicites plutot qu'une boucle : TypeScript ne sait pas
+  // reduire le type d'un acces indexe dynamique, et on perdrait le typage.
+  if (data.tasks !== undefined && !Array.isArray(data.tasks)) invalid('data.tasks', 'tableau attendu')
+  if (data.participants !== undefined && !Array.isArray(data.participants)) {
+    invalid('data.participants', 'tableau attendu')
+  }
+  if (data.items !== undefined && !Array.isArray(data.items)) invalid('data.items', 'tableau attendu')
+  if (data.expenses !== undefined && !Array.isArray(data.expenses)) {
+    invalid('data.expenses', 'tableau attendu')
+  }
   if (!isObject(data.settings)) invalid('data.settings', 'objet attendu')
 
   const settings = data.settings
@@ -189,6 +291,12 @@ export function validateBackup(raw: unknown): BackupFile {
       trips: data.trips.map(parseTrip),
       reminders: (data.reminders ?? []).map(parseReminder),
       documents: (data.documents ?? []).map(parseDocument),
+      // Absents des sauvegardes v1 et v2 : la collection est alors vide, ce qui
+      // est exactement l'etat d'un evenement sans module.
+      tasks: (data.tasks ?? []).map(parseTask),
+      participants: (data.participants ?? []).map(parseParticipant),
+      items: (data.items ?? []).map(parseItem),
+      expenses: (data.expenses ?? []).map(parseExpense),
       settings: {
         displayName: isNonEmptyString(settings.displayName) ? settings.displayName : 'Axel',
         lastBackupAt: isIsoDate(settings.lastBackupAt) ? settings.lastBackupAt : null,
