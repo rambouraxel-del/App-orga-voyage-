@@ -5,6 +5,7 @@ import { useDatabaseBootstrap } from '@/hooks/useDatabaseBootstrap'
 import { AppLayout } from '@/navigation/AppLayout'
 import { BACKUP_SECTION_ID, ROUTES } from '@/navigation/routes'
 import { AgendaPage } from '@/pages/AgendaPage'
+import { DocumentDetailPage } from '@/pages/DocumentDetailPage'
 import { DocumentsPage } from '@/pages/DocumentsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { EventDetailPage } from '@/pages/EventDetailPage'
@@ -64,6 +65,7 @@ export default function App() {
             <Route path={ROUTES.eventEdit} element={<EventFormPage />} />
             <Route path={ROUTES.trips} element={<TripsPage />} />
             <Route path={ROUTES.documents} element={<DocumentsPage />} />
+            <Route path={ROUTES.documentDetail} element={<DocumentDetailPage />} />
             <Route path={ROUTES.settings} element={<SettingsPage />} />
             {/* Ancienne route V0.1/V0.2 : on redirige plutot que de casser les
                 liens deja partages ou mis en favori. */}

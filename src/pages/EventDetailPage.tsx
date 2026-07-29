@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BudgetSection } from '@/components/events/BudgetSection'
+import { DocumentsSection } from '@/components/events/DocumentsSection'
 import { ItemsSection } from '@/components/events/ItemsSection'
 import { ParticipantsSection } from '@/components/events/ParticipantsSection'
 import { TasksSection } from '@/components/events/TasksSection'
@@ -17,7 +18,7 @@ import {
   StateBlock,
 } from '@/components/ui'
 import { EVENT_STATUS_TONES, illustrationFor } from '@/config/visuals'
-import { eventsRepository } from '@/db/repositories'
+import { documentsRepository, eventsRepository } from '@/db/repositories'
 import { useEventModules } from '@/hooks/useEventModules'
 import { EVENT_CATEGORY_LABELS, EVENT_STATUS_LABELS } from '@/models'
 import { ROUTES, eventEditPath, eventNewPath } from '@/navigation/routes'
@@ -32,6 +33,7 @@ const SECTIONS = [
   { id: 'participants', label: 'Participants' },
   { id: 'budget', label: 'Budget' },
   { id: 'a-ramener', label: 'A ramener' },
+  { id: 'documents', label: 'Documents' },
 ] as const
 
 export function EventDetailPage() {
@@ -41,6 +43,12 @@ export function EventDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  /**
+   * Sort des documents rattaches lors de la suppression de l'evenement.
+   * Par defaut on CONSERVE : effacer silencieusement des fichiers importes par
+   * l'utilisateur serait la pire des surprises.
+   */
+  const [deleteDocuments, setDeleteDocuments] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const { data, loading, error } = useEventModules(id)
@@ -63,6 +71,12 @@ export function EventDetailPage() {
     if (!id) return
     setBusy(true)
     try {
+      // Les documents sont traites AVANT la cascade, selon le choix explicite
+      // de l'utilisateur : suppression du fichier, ou simple dissociation.
+      await documentsRepository.handleEventDeletion(
+        id,
+        deleteDocuments ? 'supprimer' : 'conserver',
+      )
       // Supprime aussi taches, participants, objets et depenses (cascade).
       await eventsRepository.remove(id)
       setConfirmDelete(false)
@@ -109,7 +123,19 @@ export function EventDetailPage() {
     )
   }
 
-  const { event, tasks, participants, items, expenses, progress, budget, confirmedCount } = data
+  const {
+    event,
+    tasks,
+    participants,
+    items,
+    expenses,
+    documents,
+    availableDocuments,
+    allEvents,
+    progress,
+    budget,
+    confirmedCount,
+  } = data
   const past = isPastEvent(event)
   const ongoing = isOngoingEvent(event)
   const days = dayCount(event)
@@ -153,7 +179,10 @@ export function EventDetailPage() {
             <h2 className="detail-card__title">{event.title}</h2>
 
             {/* Indicateurs synthetiques des modules renseignes. */}
-            {progress.total > 0 || participants.length > 0 || budget.spent > 0 ? (
+            {progress.total > 0 ||
+            participants.length > 0 ||
+            budget.spent > 0 ||
+            documents.length > 0 ? (
               <div className="badge-row detail-card__indicators">
                 {progress.total > 0 ? (
                   <Badge tone={progress.complete ? 'sage' : 'apricot'}>
@@ -168,6 +197,11 @@ export function EventDetailPage() {
                 {budget.hasPlan ? (
                   <Badge tone={budget.overBudget ? 'blush' : 'mint'}>
                     Budget {budget.percentUsed} %
+                  </Badge>
+                ) : null}
+                {documents.length > 0 ? (
+                  <Badge tone="sage">
+                    {documents.length} document{documents.length > 1 ? 's' : ''}
                   </Badge>
                 ) : null}
               </div>
@@ -258,6 +292,12 @@ export function EventDetailPage() {
         items={items}
       />
       <ItemsSection eventId={event.id} items={items} />
+      <DocumentsSection
+        eventId={event.id}
+        documents={documents}
+        available={availableDocuments}
+        events={allEvents}
+      />
 
       {/* --- Actions ---------------------------------------------------------- */}
       <div className="detail-actions">
@@ -306,6 +346,30 @@ export function EventDetailPage() {
             « <strong>{event.title}</strong> » sera definitivement supprime de cet appareil, ainsi
             que ses taches, participants, depenses et objets a ramener. Cette action est
             irreversible.
+            {documents.length > 0 ? (
+              <span className="confirm-choice">
+                <label className="switch" htmlFor="supprimer-documents">
+                  <input
+                    id="supprimer-documents"
+                    type="checkbox"
+                    checked={deleteDocuments}
+                    onChange={(e) => setDeleteDocuments(e.target.checked)}
+                  />
+                  <span className="switch__track" aria-hidden="true">
+                    <span className="switch__thumb" />
+                  </span>
+                  <span className="switch__label">
+                    Supprimer aussi {documents.length} document
+                    {documents.length > 1 ? 's' : ''} et leurs fichiers
+                  </span>
+                </label>
+                <span className="confirm-choice__hint">
+                  {deleteDocuments
+                    ? 'Les fichiers seront definitivement effaces.'
+                    : 'Les documents resteront dans ta bibliotheque, sans evenement associe.'}
+                </span>
+              </span>
+            ) : null}
           </>
         }
         details={
@@ -325,7 +389,10 @@ export function EventDetailPage() {
         confirmLabel="Supprimer definitivement"
         cancelLabel="Annuler"
         onConfirm={handleDelete}
-        onCancel={() => setConfirmDelete(false)}
+        onCancel={() => {
+          setConfirmDelete(false)
+          setDeleteDocuments(false)
+        }}
       />
     </>
   )

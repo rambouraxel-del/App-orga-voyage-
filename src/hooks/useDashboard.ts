@@ -53,8 +53,11 @@ export interface DashboardData {
   pendingItems: Array<{ item: EventItem; eventTitle: string }>
   reminders: Reminder[]
   pendingReminderCount: number
+  /** Prochains billets et reservations (documents dates, non archives). */
   documents: TravelDocument[]
   documentCount: number
+  /** Documents dont la date utile tombe dans les 7 prochains jours. */
+  expiringDocuments: TravelDocument[]
   /** Vrai si l'utilisateur n'a aucun evenement — declenche l'ecran d'accueil vide. */
   hasNoEvents: boolean
 }
@@ -130,6 +133,18 @@ export function useDashboard(): LiveDataState<DashboardData> {
         eventTitle: titleById.get(task.eventId) ?? 'Evenement',
       }))
 
+    // Billets a venir : dates, non archives, echeance pas encore passee.
+    const soon = Date.now() + 7 * 86_400_000
+    const upcomingDocuments = documents.filter(
+      (document) =>
+        !document.archived &&
+        document.usefulDate !== undefined &&
+        new Date(document.usefulDate).getTime() >= Date.now() - 86_400_000,
+    )
+    const expiringDocuments = upcomingDocuments.filter(
+      (document) => new Date(document.usefulDate!).getTime() <= soon,
+    )
+
     const pendingItems = allItems
       .filter((item) => item.status !== 'termine' && upcomingIds.has(item.eventId))
       .slice(0, 3)
@@ -152,8 +167,9 @@ export function useDashboard(): LiveDataState<DashboardData> {
       pendingItems,
       reminders: reminders.slice(0, 3),
       pendingReminderCount: reminders.length,
-      documents: documents.slice(0, 2),
+      documents: upcomingDocuments.slice(0, 3),
       documentCount: documents.length,
+      expiringDocuments,
       hasNoEvents: allEvents.length === 0,
     }
   })

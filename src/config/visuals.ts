@@ -2,7 +2,7 @@ import type { IconName } from '@/components/icons/paths'
 import type { IllustrationName } from '@/components/icons/Illustration'
 import type { BadgeTone } from '@/components/ui/Badge'
 import type { ChipTone } from '@/components/ui/IconChip'
-import type { DocumentKind, EventCategory, EventStatus, TripStatus } from '@/models'
+import type { DocumentCategory, EventCategory, EventStatus, TripStatus } from '@/models'
 
 /** Correspondance categorie d'evenement -> picto + teinte pastel. */
 export const EVENT_VISUALS: Record<EventCategory, { icon: IconName; tone: ChipTone }> = {
@@ -44,12 +44,15 @@ export const TRIP_STATUS_TONES: Record<TripStatus, BadgeTone> = {
   termine: 'neutral',
 }
 
-export const DOCUMENT_VISUALS: Record<DocumentKind, { icon: IconName; tone: ChipTone }> = {
-  billet: { icon: 'ticket', tone: 'apricot' },
+export const DOCUMENT_VISUALS: Record<DocumentCategory, { icon: IconName; tone: ChipTone }> = {
+  transport: { icon: 'avion', tone: 'sky' },
+  hebergement: { icon: 'valise', tone: 'apricot' },
   reservation: { icon: 'document', tone: 'sky' },
+  billet: { icon: 'ticket', tone: 'apricot' },
   identite: { icon: 'document', tone: 'lavender' },
   assurance: { icon: 'cadenas', tone: 'mint' },
-  autre: { icon: 'document', tone: 'neutral' },
+  programme: { icon: 'liste', tone: 'sage' },
+  autre: { icon: 'dossier', tone: 'neutral' },
 }
 
 /**

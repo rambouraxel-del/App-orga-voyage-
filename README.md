@@ -1,4 +1,4 @@
-# Mes Aventures — v0.3
+# Mes Aventures — v0.4
 
 Application mobile personnelle pour organiser ses **sorties, soirées, événements,
 week-ends et voyages**.
@@ -10,10 +10,11 @@ Tout est **100 % local** : pas de compte, pas de serveur, pas d'API externe. Les
 données vivent dans le stockage du navigateur (IndexedDB) et ne quittent jamais
 l'appareil, sauf par un export volontaire.
 
-> **V0.1 → V0.2 → V0.3** : la V0.1 posait le socle technique, la V0.2 a rendu la
-> gestion d'événements réellement utilisable. La V0.3 ajoute quatre modules
-> facultatifs par événement — organisation, participants, budget, à ramener —
-> et déplace la sauvegarde dans une page Paramètres.
+> **V0.1 → V0.4** : la V0.1 posait le socle technique, la V0.2 a rendu la gestion
+> d'événements réellement utilisable, la V0.3 a ajouté quatre modules facultatifs
+> par événement. La V0.4 rend le module **Documents** pleinement fonctionnel :
+> billets, réservations et fichiers sont stockés localement et consultables
+> hors connexion.
 
 ---
 
@@ -179,6 +180,63 @@ centime pour éviter les artefacts de virgule flottante.
 
 ---
 
+## Nouveautés de la V0.4
+
+### Documents & billets
+
+Import depuis l'iPhone (app Fichiers, photothèque) de **PDF, JPEG, PNG, WebP et
+fichiers texte**, limités à **15 Mo** par fichier — seuil configurable dans
+`src/config/documents.ts`. Un format ou une taille refusés donnent un message
+explicite, jamais un échec silencieux.
+
+Chaque document porte : titre, catégorie, événement associé (facultatif), date
+utile ou d'expiration, note, nom/type/taille du fichier, dates d'ajout et de
+modification.
+
+Catégories : transport · hébergement · réservation · billet · identité ·
+assurance · programme · autre.
+
+### Bibliothèque
+
+Recherche par titre, note ou événement · filtres par catégorie et par événement ·
+tri par date utile, nom ou ajout récent · vues **À venir / Tous / Archivés** ·
+taille totale occupée et estimation de l'espace utilisé.
+
+> « Tous » affiche les documents **actifs**. Les archivés ont leur propre vue,
+> pour ne pas encombrer la consultation courante.
+
+### Fiche document
+
+Prévisualisation des images et des PDF quand le navigateur le permet, avec repli
+propre sinon (ouverture ou téléchargement). Modification des informations,
+changement d'événement associé, duplication des métadonnées avec un nouveau
+fichier, archivage, suppression après confirmation.
+
+### Intégration aux événements
+
+Une section **Documents** dans chaque fiche événement : consultation, import
+direct avec l'événement pré-sélectionné, rattachement d'un document existant,
+retrait de l'association. Le nombre de documents apparaît dans l'aperçu et sur
+les cartes de la liste.
+
+**Supprimer un événement n'efface jamais silencieusement ses fichiers.** Une
+case à cocher, décochée par défaut, propose de les supprimer ; sinon ils restent
+dans la bibliothèque, simplement dissociés.
+
+### Stockage local
+
+Les **métadonnées** vivent dans `documents`, le **contenu binaire** dans
+`documentFiles`, sous forme de `Blob`. Cette séparation est structurante :
+Dexie renvoie l'enregistrement complet, donc mélanger les deux ferait charger
+des dizaines de mégaoctets en mémoire au simple affichage de la liste.
+
+Aucun fichier n'est jamais encodé en Base64 dans les données applicatives. Les
+URLs temporaires (`URL.createObjectURL`) sont **systématiquement révoquées** au
+démontage du composant — sans quoi chaque ouverture de fiche laisserait un Blob
+entier en mémoire.
+
+---
+
 ## Structure d'un événement
 
 ```ts
@@ -225,7 +283,9 @@ correspond au tri chronologique.
 | `/evenements/:id`               | Fiche détaillée                        |
 | `/evenements/:id/modifier`      | Modification                           |
 | `/voyages`                      | Voyages (inchangé depuis la V0.1)      |
-| `/documents`                    | Documents & billets (état vide V0.3)   |
+| `/documents`                    | Bibliothèque de documents              |
+| `/documents?categorie=billet`   | Bibliothèque filtrée                   |
+| `/documents/:id`                | Fiche document                         |
 | `/parametres`                   | Profil, affichage, sauvegarde, à propos |
 | `/parametres#sauvegarde`        | Section Sauvegarde (export / import)   |
 | `/sauvegarde`                   | **Redirige** vers `/parametres#sauvegarde` |
@@ -237,6 +297,25 @@ partagé fonctionne toujours**, y compris depuis un sous-chemin.
 ---
 
 ## Migration de la base
+
+### v3 → v4 (V0.4)
+
+Ajout de la table `documentFiles` (contenu binaire) et évolution des documents :
+
+| V0.1 – V0.3 | V0.4 |
+| --- | --- |
+| `kind` | → `category` (+ `transport`, `hebergement`, `programme`) |
+| `date` | → `usefulDate` |
+| *(absent)* | → `fileName`, `mimeType`, `size`, `archived` |
+| `fileRef` | supprimé — jamais utilisé, remplacé par `documentFiles` |
+
+Les fiches créées avant la V0.4 **n'avaient aucun fichier** : elles sont
+conservées comme fiches sans pièce jointe, consultables et modifiables, et
+signalées par un badge « Fichier manquant ». Elles portent des informations
+saisies : les supprimer serait une perte de données.
+
+La conversion est portée par `migrateDocumentToV4` — pure et idempotente, comme
+`migrateEventToV2`, et réutilisée par l'import de sauvegarde.
 
 ### v2 → v3 (V0.3)
 
@@ -273,16 +352,37 @@ et jamais recréées ensuite : si l'utilisateur les supprime, elles ne reviennen
 
 ## Format de sauvegarde
 
-Le format passe en **version 3**. Les sauvegardes **v1 (V0.1) et v2 (V0.2)
-restent importables** : les événements sont migrés à la volée et les collections
-absentes deviennent des tableaux vides — exactement l'état d'un événement dont
-aucun module n'est utilisé.
+Le format passe en **version 4** et l'export devient une **archive ZIP** :
+
+```
+mes-aventures-sauvegarde-2026-07-29.zip
+├── sauvegarde.json          ← toutes les données + manifeste des fichiers
+└── documents/
+    ├── <id-document>.pdf
+    └── <id-document>.png
+```
+
+Le manifeste (`files[]`) relie chaque fichier à son document par identifiant —
+et non par nom, puisque deux billets peuvent parfaitement s'appeler `billet.pdf`.
+
+L'archive utilise la méthode **« store » (sans compression)**, écrite à la main
+dans `src/services/zip.ts` : le contenu est déjà du PDF et du JPEG compressés,
+deflater ne gagnerait quasiment rien tout en coûtant du CPU sur un iPhone. Le
+résultat reste une archive ZIP standard, ouvrable par l'app Fichiers d'iOS.
+
+**Les sauvegardes v1, v2 et v3 (JSON) restent importables** : le format est
+détecté par la signature du fichier, les événements et documents sont migrés à
+la volée, et les collections absentes deviennent des tableaux vides.
+
+Un fichier annoncé mais introuvable dans l'archive **n'interrompt pas la
+restauration** : la fiche est restaurée sans pièce jointe et l'utilisateur est
+averti, à la confirmation puis dans le message de résultat.
 
 ```jsonc
 {
   "signature": "mes-aventures-backup",
-  "formatVersion": 3,
-  "appVersion": "0.3.0",
+  "formatVersion": 4,
+  "appVersion": "0.4.0",
   "createdAt": "2026-07-29T06:00:00.000Z",
   "data": {
     "events":    [ /* nouveaux champs inclus : category, allDay, imageKey */ ],
@@ -294,7 +394,12 @@ aucun module n'est utilisé.
     "items":        [ /* V0.3 */ ],
     "expenses":     [ /* V0.3 */ ],
     "settings":  { "displayName": "Axel", "lastBackupAt": null,
-                   "appVersion": "0.3.0", "currency": "EUR" }
+                   "appVersion": "0.4.0", "currency": "EUR" }
+  },
+  "files": [
+    { "documentId": "…", "path": "documents/….pdf",
+      "fileName": "billet.pdf", "mimeType": "application/pdf", "size": 20481 }
+  ]
   }
 }
 ```
@@ -318,7 +423,7 @@ src/
 │   ├── database.ts             # schéma Dexie versionné + migrateEventToV2
 │   ├── seed.ts / seedData.ts   # données de démonstration (premier lancement)
 │   └── repositories/           # accès aux données — une façade par table
-├── services/                   # export, import, validation, erreurs utilisateur
+├── services/                   # export ZIP, import, validation, zip.ts, erreurs
 ├── hooks/                      # useLiveData, useDashboard, useDatabaseBootstrap
 ├── navigation/                 # routes, barre inférieure, coquille
 ├── pages/                      # une page par écran (dont EventFormPage, EventDetailPage)
@@ -330,12 +435,14 @@ src/
 │   │                           #   TasksSection, ParticipantsSection,
 │   │                           #   BudgetSection, ItemsSection
 │   ├── settings/               # BackupSection
+│   ├── documents/              # DocumentCard, DocumentSheet
 │   └── home/                   # sections du tableau de bord
 ├── styles/                     # thème, reset, base, composants, formulaires, agenda, pages
 └── utils/
     ├── eventRules.ts           # règles métier pures (passé, tri, chevauchement, recherche)
     ├── taskRules.ts            # état, progression, retard, réordonnancement
     ├── budgetRules.ts          # totaux, reste, écart, répartition, dépassement
+    ├── fileRules.ts            # validation des fichiers, types MIME, tailles
     ├── eventValidation.ts      # validation du formulaire
     ├── eventForm.ts            # valeurs initiales (création / édition / duplication)
     ├── calendar.ts             # génération de la grille mensuelle
@@ -351,7 +458,7 @@ puis par les hooks. La logique métier vit dans `utils/`, pure et testable.
 ## Procédure de test
 
 ```bash
-npm test        # 94 tests — règles métier, budget, tâches, validation, migrations
+npm test        # 140 tests — règles métier, budget, tâches, fichiers, ZIP, migrations
 npx tsc -b      # types
 npm run build   # build de production
 ```
@@ -369,7 +476,16 @@ Les tests automatisés couvrent :
   répartition par catégorie, dépassement, absence d'enveloppe, cadeaux intégrés,
   robustesse aux montants illisibles et arrondi au centime ;
 - **progression et statut des tâches** — pourcentage, achèvement, comptage des
-  retards, tri par urgence, réordonnancement et bornes.
+  retards, tri par urgence, réordonnancement et bornes ;
+- **validation des fichiers** — formats acceptés et refusés, taille limite et
+  cas exact à la limite, fichier vide, repli sur l'extension quand Safari iOS ne
+  déclare pas de type MIME, suggestions de titre et de catégorie ;
+- **archives ZIP** — aller-retour sur texte et binaire arbitraire, noms non
+  ASCII, entrées vides, gros contenu, détection de signature, refus des archives
+  tronquées ou sans répertoire central, vecteurs de test CRC-32 de référence ;
+- **manifeste de sauvegarde** — correspondances document/fichier, entrées
+  incomplètes ignorées sans faire échouer l'import, migration `kind` → `category`
+  et préservation des associations.
 
 ### Parcours manuel recommandé
 
@@ -396,8 +512,15 @@ Les tests automatisés couvrent :
 - La page **Voyages** reste celle de la V0.1 : elle lit la table `trips` héritée,
   qui n'est pas éditable. Les voyages se saisissent pour l'instant comme des
   événements de catégorie « Voyage ».
-- La page **Documents** est une destination avec état vide : aucun fichier ne peut
-  encore être ajouté ni consulté, conformément au périmètre.
+- La **prévisualisation des PDF** dépend du navigateur. Safari iOS n'affiche pas
+  toujours un PDF en `<object>` : un repli propose alors l'ouverture ou le
+  téléchargement, sans jamais faire planter l'application.
+- Le **fichier joint n'est pas remplaçable** sur un document existant : il faut
+  dupliquer la fiche et importer le nouveau fichier. C'est un choix assumé, qui
+  évite de désynchroniser métadonnées et contenu.
+- L'estimation d'espace de `navigator.storage.estimate()` est **approximative**
+  sur Safari ; l'application affiche donc aussi la somme exacte des tailles de
+  fichiers.
 - Dans les **Paramètres**, le prénom affiché et les préférences d'affichage sont
   présentés mais pas encore modifiables — les emplacements sont préparés.
 - Le réordonnancement des tâches se fait par **flèches haut/bas**, pas par
@@ -414,22 +537,18 @@ Les tests automatisés couvrent :
 
 ## Hors périmètre de la V0.2 (architecture préparée)
 
-Stockage réel de documents et billets · géolocalisation · cartes interactives ·
-notifications système · gestion détaillée des voyages · synchronisation cloud ·
-partage entre utilisateurs · comptes utilisateurs.
-
-La table `documents` existe déjà et est préservée par les migrations et les
-sauvegardes : le module correspondant pourra s'y brancher sans nouvelle migration
-lourde.
+Synchronisation cloud · partage entre utilisateurs · envoi par e-mail · OCR ou
+lecture automatique du contenu · modification interne des PDF · cartes et
+géolocalisation · notifications système · gestion avancée des voyages.
 
 ---
 
-## Prévu pour la V0.4
+## Prévu pour la V0.5
 
-- Stockage réel des documents et billets (PDF, images) en local.
 - Gestionnaire de voyage complet : itinéraire, hébergements, étapes.
 - Modification du prénom et préférences d'affichage dans les Paramètres.
 - Budget consolidé sur plusieurs événements, et vue budget globale.
+- Remplacement du fichier d'un document existant.
 - Événements récurrents et rappels.
 - Vue semaine dans l'agenda.
 

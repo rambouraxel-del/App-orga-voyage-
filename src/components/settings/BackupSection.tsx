@@ -6,9 +6,10 @@ import { settingsRepository } from '@/db/repositories'
 import { useLiveData } from '@/hooks/useLiveData'
 import { BACKUP_SECTION_ID } from '@/navigation/routes'
 import { ERROR_MESSAGES, toUserMessage } from '@/services/errors'
-import { exportBackup } from '@/services/exportService'
+import { exportBackup, type ExportProgress } from '@/services/exportService'
 import { applyImport, prepareImport, type BackupPreview } from '@/services/importService'
 import { formatDateTime } from '@/utils/date'
+import { formatFileSize } from '@/utils/fileRules'
 
 type Feedback = { tone: 'success' | 'error'; message: string } | null
 
@@ -25,32 +26,42 @@ export function BackupSection() {
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [pendingImport, setPendingImport] = useState<BackupPreview | null>(null)
+  /** Etape en cours d'un export long (archive avec fichiers). */
+  const [progress, setProgress] = useState<ExportProgress | null>(null)
 
   const { data, loading, error } = useLiveData(async () => {
-    const [settings, events, tasks, participants, items, expenses] = await Promise.all([
-      settingsRepository.get(),
-      db.events.count(),
-      db.tasks.count(),
-      db.participants.count(),
-      db.items.count(),
-      db.expenses.count(),
-    ])
-    return { settings, counts: { events, tasks, participants, items, expenses } }
+    const [settings, events, tasks, participants, items, expenses, documents, allDocuments] =
+      await Promise.all([
+        settingsRepository.get(),
+        db.events.count(),
+        db.tasks.count(),
+        db.participants.count(),
+        db.items.count(),
+        db.expenses.count(),
+        db.documents.count(),
+        db.documents.toArray(),
+      ])
+    return {
+      settings,
+      counts: { events, tasks, participants, items, expenses, documents },
+      filesSize: allDocuments.reduce((sum, doc) => sum + (doc.size || 0), 0),
+    }
   })
 
   async function handleExport() {
     setFeedback(null)
     setExporting(true)
     try {
-      const result = await exportBackup()
+      const result = await exportBackup(setProgress)
       setFeedback({
         tone: 'success',
-        message: `Sauvegarde creee : ${result.fileName} (${result.itemCount} elements). Enregistre-la dans Fichiers ou envoie-la vers iCloud.`,
+        message: `Archive creee : ${result.fileName} — ${result.itemCount} elements et ${result.fileCount} fichier${result.fileCount > 1 ? 's' : ''} (${formatFileSize(result.archiveSize)}). Enregistre-la dans Fichiers ou envoie-la vers iCloud.`,
       })
     } catch (cause) {
       setFeedback({ tone: 'error', message: toUserMessage(cause, ERROR_MESSAGES.EXPORT_FAILED) })
     } finally {
       setExporting(false)
+      setProgress(null)
     }
   }
 
@@ -76,11 +87,17 @@ export function BackupSection() {
     if (!pendingImport) return
     setImporting(true)
     try {
-      const result = await applyImport(pendingImport.backup)
+      const result = await applyImport(pendingImport)
       setPendingImport(null)
+      // Les fichiers absents sont signales explicitement : la restauration
+      // reussit, mais l'utilisateur doit savoir ce qui manque.
+      const missing =
+        result.missingFiles.length > 0
+          ? ` ${result.missingFiles.length} fichier${result.missingFiles.length > 1 ? "s n'ont" : " n'a"} pas pu etre restaure${result.missingFiles.length > 1 ? 's' : ''} : ${result.missingFiles.slice(0, 3).join(', ')}${result.missingFiles.length > 3 ? '…' : ''}.`
+          : ''
       setFeedback({
-        tone: 'success',
-        message: `Restauration terminee : ${result.itemCount} elements recharges. Tes ecrans sont a jour.`,
+        tone: result.missingFiles.length > 0 ? 'error' : 'success',
+        message: `Restauration terminee : ${result.itemCount} elements et ${result.fileCount} fichier${result.fileCount > 1 ? 's rechargés' : ' rechargé'}.${missing}`,
       })
     } catch (cause) {
       setPendingImport(null)
@@ -137,6 +154,10 @@ export function BackupSection() {
               <p className="backup-stat__value">{data.counts.expenses}</p>
               <p className="backup-stat__label">Depenses</p>
             </div>
+            <div className="backup-stat">
+              <p className="backup-stat__value">{data.counts.documents}</p>
+              <p className="backup-stat__label">Documents</p>
+            </div>
           </div>
 
           <div className="backup-actions">
@@ -149,6 +170,18 @@ export function BackupSection() {
             >
               Exporter mes donnees
             </Button>
+
+            {progress ? (
+              <div className="progress-note" aria-live="polite">
+                <p className="progress-note__label">{progress.step}</p>
+                <div className="progress">
+                  <div
+                    className="progress__fill"
+                    style={{ width: `${Math.round((progress.ratio ?? 0) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
 
             <Button
               variant="secondary"
@@ -177,7 +210,9 @@ export function BackupSection() {
               Tes donnees sont conservees <strong>uniquement sur cet appareil</strong>, dans le
               stockage local du navigateur. Aucun compte, aucun serveur, aucun envoi sur Internet.
               Exporte regulierement : effacer les donnees de Safari ou desinstaller l’application
-              supprimerait tout.
+              supprimerait tout. L’export produit une <strong>archive ZIP</strong> contenant tes
+              donnees et tes {data.counts.documents} document
+              {data.counts.documents > 1 ? 's' : ''} ({formatFileSize(data.filesSize)}).
             </p>
           </div>
         </>
@@ -191,6 +226,23 @@ export function BackupSection() {
           <>
             La restauration <strong>efface toutes les donnees presentes</strong> sur cet appareil et
             les remplace par le contenu du fichier. Cette action est definitive.
+            {pendingImport && pendingImport.missingFiles.length > 0 ? (
+              <span className="confirm-choice">
+                <span className="confirm-choice__hint">
+                  ⚠ {pendingImport.missingFiles.length} fichier
+                  {pendingImport.missingFiles.length > 1 ? 's sont introuvables' : ' est introuvable'}{' '}
+                  dans l’archive. Les fiches correspondantes seront restaurees sans piece jointe.
+                </span>
+              </span>
+            ) : null}
+            {pendingImport && !pendingImport.fromArchive ? (
+              <span className="confirm-choice">
+                <span className="confirm-choice__hint">
+                  Cette sauvegarde est un fichier JSON d’une version anterieure : elle ne contient
+                  aucun fichier joint.
+                </span>
+              </span>
+            ) : null}
           </>
         }
         details={
@@ -210,6 +262,10 @@ export function BackupSection() {
               <dd>{pendingImport.counts.items}</dd>
               <dt>Depenses</dt>
               <dd>{pendingImport.counts.expenses}</dd>
+              <dt>Documents</dt>
+              <dd>{pendingImport.counts.documents}</dd>
+              <dt>Fichiers joints</dt>
+              <dd>{pendingImport.counts.files}</dd>
             </dl>
           ) : null
         }
