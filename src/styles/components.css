@@ -139,6 +139,11 @@
   color: #8a6227;
 }
 
+.badge--mint {
+  background: rgba(196, 219, 205, 0.5);
+  color: #3f6350;
+}
+
 .badge--lavender {
   background: rgba(203, 194, 221, 0.45);
   color: #5f5677;

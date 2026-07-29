@@ -3,9 +3,10 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Button, StateBlock } from '@/components/ui'
 import { useDatabaseBootstrap } from '@/hooks/useDatabaseBootstrap'
 import { AppLayout } from '@/navigation/AppLayout'
-import { ROUTES } from '@/navigation/routes'
+import { BACKUP_SECTION_ID, ROUTES } from '@/navigation/routes'
 import { AgendaPage } from '@/pages/AgendaPage'
-import { BackupPage } from '@/pages/BackupPage'
+import { DocumentsPage } from '@/pages/DocumentsPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { EventDetailPage } from '@/pages/EventDetailPage'
 import { EventFormPage } from '@/pages/EventFormPage'
 import { EventsPage } from '@/pages/EventsPage'
@@ -62,7 +63,14 @@ export default function App() {
             <Route path={ROUTES.eventDetail} element={<EventDetailPage />} />
             <Route path={ROUTES.eventEdit} element={<EventFormPage />} />
             <Route path={ROUTES.trips} element={<TripsPage />} />
-            <Route path={ROUTES.backup} element={<BackupPage />} />
+            <Route path={ROUTES.documents} element={<DocumentsPage />} />
+            <Route path={ROUTES.settings} element={<SettingsPage />} />
+            {/* Ancienne route V0.1/V0.2 : on redirige plutot que de casser les
+                liens deja partages ou mis en favori. */}
+            <Route
+              path={ROUTES.legacyBackup}
+              element={<Navigate to={`${ROUTES.settings}#${BACKUP_SECTION_ID}`} replace />}
+            />
             <Route path="/index.html" element={<Navigate to={ROUTES.home} replace />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>

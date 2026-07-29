@@ -2,9 +2,14 @@ import type { ReactNode } from 'react'
 import { IconChip } from '@/components/ui'
 import { DOCUMENT_VISUALS } from '@/config/visuals'
 import type { MonthSummary } from '@/hooks/useDashboard'
-import type { AppEvent, Reminder, TravelDocument, Trip } from '@/models'
+import type { AppEvent, EventItem, Reminder, TravelDocument, Trip } from '@/models'
+import type { UpcomingTask } from '@/hooks/useDashboard'
+import type { TaskProgress } from '@/utils/taskRules'
+import { formatShortDate } from '@/utils/date'
+import { isOverdue } from '@/utils/taskRules'
+import { Badge } from '@/components/ui'
 import { formatCountdown, formatDateRange } from '@/utils/date'
-import { pluralize } from '@/utils/format'
+import { formatCurrency, pluralize } from '@/utils/format'
 
 /** Enveloppe commune des petites cartes d'apercu. */
 function PreviewCard({
@@ -73,6 +78,11 @@ export function MonthSummaryPreview({ month }: { month: MonthSummary }) {
           {month.count > 0 ? `Prevus en ${month.label}` : `Ton mois de ${month.label} est libre`}
         </p>
       </div>
+      {month.spent > 0 ? (
+        <p className="preview-card__secondary">
+          <strong>{formatCurrency(month.spent)}</strong> depenses ce mois-ci
+        </p>
+      ) : null}
     </PreviewCard>
   )
 }
@@ -138,6 +148,105 @@ export function DocumentsPreview({
         </>
       ) : (
         <p className="preview-card__secondary">Aucun document enregistre.</p>
+      )}
+    </PreviewCard>
+  )
+}
+
+/* --- Preparation du prochain evenement -------------------------------------- */
+
+export function PreparationPreview({
+  progress,
+  eventTitle,
+}: {
+  progress: TaskProgress | null
+  eventTitle: string | null
+}) {
+  return (
+    <PreviewCard title="Preparation" icon="cases" tone="lavender">
+      {progress && progress.total > 0 ? (
+        <>
+          <div>
+            <p className="preview-card__primary">{progress.percent} %</p>
+            <p className="preview-card__secondary">
+              {progress.done}/{progress.total} taches pour {eventTitle}
+            </p>
+          </div>
+          <div className="progress">
+            <div
+              className="progress__fill"
+              style={{ width: `${progress.percent}%` }}
+              role="img"
+              aria-label={`${progress.percent} % de la preparation effectuee`}
+            />
+          </div>
+          {progress.overdue > 0 ? (
+            <Badge tone="blush">{progress.overdue} en retard</Badge>
+          ) : null}
+        </>
+      ) : (
+        <p className="preview-card__secondary">
+          Aucune tache pour l’instant. Ouvre un evenement pour organiser sa preparation.
+        </p>
+      )}
+    </PreviewCard>
+  )
+}
+
+/* --- Taches a venir ---------------------------------------------------------- */
+
+export function UpcomingTasksPreview({ tasks }: { tasks: UpcomingTask[] }) {
+  return (
+    <PreviewCard title="A faire bientot" icon="valide" tone="sage">
+      {tasks.length > 0 ? (
+        <ul className="preview-card__list">
+          {tasks.map(({ task, eventTitle }) => (
+            <li key={task.id} className="preview-card__list-item">
+              <span
+                className="preview-card__bullet"
+                style={isOverdue(task) ? { background: 'var(--c-danger)' } : undefined}
+                aria-hidden="true"
+              />
+              <span className="preview-card__list-text">
+                {task.title}
+                <span className="text-faint">
+                  {' — '}
+                  {task.dueDate ? formatShortDate(task.dueDate) : eventTitle}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="preview-card__secondary">Rien d’urgent. Tout est sous controle.</p>
+      )}
+    </PreviewCard>
+  )
+}
+
+/* --- Objets et cadeaux a preparer ---------------------------------------------- */
+
+export function PendingItemsPreview({
+  items,
+}: {
+  items: Array<{ item: EventItem; eventTitle: string }>
+}) {
+  return (
+    <PreviewCard title="A ne pas oublier" icon="cadeau" tone="apricot">
+      {items.length > 0 ? (
+        <ul className="preview-card__list">
+          {items.map(({ item, eventTitle }) => (
+            <li key={item.id} className="preview-card__list-item">
+              <span className="preview-card__bullet" aria-hidden="true" />
+              <span className="preview-card__list-text">
+                {item.label}
+                <span className="text-faint">{` — ${eventTitle}`}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="preview-card__secondary">Rien a preparer pour le moment.</p>
       )}
     </PreviewCard>
   )

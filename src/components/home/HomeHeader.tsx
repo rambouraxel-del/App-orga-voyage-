@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import { Icon } from '@/components/icons/Icon'
+import { ROUTES } from '@/navigation/routes'
 
 export interface HomeHeaderProps {
   displayName: string
@@ -34,9 +36,11 @@ export function HomeHeader({ displayName, onNotificationsClick }: HomeHeaderProp
           <span className="bell-btn__dot" aria-hidden="true" />
         </button>
 
-        <div className="avatar" role="img" aria-label={`Profil de ${displayName}`}>
+        {/* L'avatar est le point d'entree des Parametres (profil, affichage,
+            sauvegarde, informations d'application). */}
+        <Link to={ROUTES.settings} className="avatar" aria-label="Ouvrir les parametres">
           {initials(displayName)}
-        </div>
+        </Link>
       </div>
     </header>
   )

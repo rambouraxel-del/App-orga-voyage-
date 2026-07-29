@@ -1,4 +1,4 @@
-# Mes Aventures — v0.2
+# Mes Aventures — v0.3
 
 Application mobile personnelle pour organiser ses **sorties, soirées, événements,
 week-ends et voyages**.
@@ -10,9 +10,10 @@ Tout est **100 % local** : pas de compte, pas de serveur, pas d'API externe. Les
 données vivent dans le stockage du navigateur (IndexedDB) et ne quittent jamais
 l'appareil, sauf par un export volontaire.
 
-> **V0.1 → V0.2** : la V0.1 posait le socle technique. La V0.2 le rend réellement
-> utilisable — création, modification, duplication, suppression, recherche,
-> filtres et véritable agenda mensuel.
+> **V0.1 → V0.2 → V0.3** : la V0.1 posait le socle technique, la V0.2 a rendu la
+> gestion d'événements réellement utilisable. La V0.3 ajoute quatre modules
+> facultatifs par événement — organisation, participants, budget, à ramener —
+> et déplace la sauvegarde dans une page Paramètres.
 
 ---
 
@@ -118,6 +119,66 @@ restent consultables, modifiables, duplicables et supprimables.
 
 ---
 
+## Nouveautés de la V0.3
+
+### Quatre modules facultatifs par événement
+
+Chaque événement peut être enrichi — ou pas. **Une sortie simple se crée toujours
+en deux gestes**, sans jamais ouvrir un seul module : ils n'affichent alors qu'un
+état vide discret.
+
+| Module | Contenu |
+| --- | --- |
+| **Organisation** | Tâches avec échéance et priorité, cochables, réordonnables ; progression globale ; distinction en retard / aujourd'hui / à venir / terminée |
+| **Participants** | Nom, coordonnées libres, statut (invité, confirmé, incertain, absent), note ; répartition par statut |
+| **Budget** | Enveloppe prévue, dépenses par catégorie, statut payé ; totaux, reste, écart, répartition, pourcentage consommé, alerte de dépassement |
+| **À ramener** | Cadeaux à acheter et objets à emporter ; quantité, prix estimé, personne concernée, statut ; prix intégrable au budget |
+
+### Fiche événement réorganisée
+
+Cinq sections ancrées, navigables par des puces en haut de page : **Aperçu**,
+**Organisation**, **Participants**, **Budget**, **À ramener**. Chacune affiche un
+résumé, un état vide explicite et un bouton d'ajout rapide qui ouvre une feuille
+de saisie sans quitter la fiche.
+
+L'aperçu porte des indicateurs synthétiques (préparation, participants confirmés,
+budget consommé), repris sur les cartes de la liste.
+
+### Accueil enrichi
+
+Progression de préparation du prochain événement, dépenses du mois, tâches
+arrivant bientôt (retards en tête) et éléments à ne pas oublier — tous calculés
+depuis IndexedDB.
+
+### Navigation et Paramètres
+
+- L'onglet **Sauvegarde** devient **Documents** : page de destination avec état
+  vide soigné. *Le stockage réel des fichiers reste hors périmètre.*
+- L'avatar aux initiales, en haut à droite de l'accueil, ouvre une page
+  **Paramètres** contenant profil, préférences (à venir), informations
+  d'application et **l'intégralité du module Sauvegarde**, à fonctionnalités
+  constantes.
+- L'ancienne route `/sauvegarde` **redirige** vers `/parametres#sauvegarde` :
+  aucun lien existant n'est cassé.
+
+### Calculs budgétaires
+
+**Aucun total n'est stocké.** Tout est recalculé à la lecture par `computeBudget`
+à partir des dépenses et de l'enveloppe prévue — pas de doublon à resynchroniser.
+
+```
+total dépensé  = Σ dépenses + Σ (prix estimé × quantité) des éléments marqués « compter au budget »
+reste          = enveloppe prévue − total dépensé          (négatif = dépassement)
+écart          = total dépensé − enveloppe prévue          (positif = dépassement)
+% consommé     = total dépensé ÷ enveloppe prévue × 100    (0 si aucune enveloppe)
+```
+
+Sans enveloppe définie, aucun dépassement n'est jamais signalé : on ne peut pas
+dépasser un budget qui n'existe pas. Les montants sont en euros, arrondis au
+centime pour éviter les artefacts de virgule flottante.
+
+---
+
 ## Structure d'un événement
 
 ```ts
@@ -164,7 +225,10 @@ correspond au tri chronologique.
 | `/evenements/:id`               | Fiche détaillée                        |
 | `/evenements/:id/modifier`      | Modification                           |
 | `/voyages`                      | Voyages (inchangé depuis la V0.1)      |
-| `/sauvegarde`                   | Export / import                        |
+| `/documents`                    | Documents & billets (état vide V0.3)   |
+| `/parametres`                   | Profil, affichage, sauvegarde, à propos |
+| `/parametres#sauvegarde`        | Section Sauvegarde (export / import)   |
+| `/sauvegarde`                   | **Redirige** vers `/parametres#sauvegarde` |
 
 L'application utilise `HashRouter` : GitHub Pages ne sait pas réécrire les URL
 profondes vers `index.html`, le hash garantit donc qu'un **rechargement ou un lien
@@ -173,6 +237,18 @@ partagé fonctionne toujours**, y compris depuis un sous-chemin.
 ---
 
 ## Migration de la base
+
+### v2 → v3 (V0.3)
+
+Quatre tables sont ajoutées : `tasks`, `participants`, `items`, `expenses`.
+**Aucune donnée existante n'est modifiée** — Dexie crée simplement les magasins
+manquants. Les événements, voyages et paramètres restent intacts.
+
+Chaque enregistrement est relié à son événement par `eventId`, et la suppression
+d'un événement efface son contenu **en cascade**, dans une transaction unique :
+on ne peut pas se retrouver avec des dépenses orphelines en base.
+
+### v1 → v2 (V0.2)
 
 La base Dexie passe de la **version 1** à la **version 2**. La migration s'exécute
 automatiquement au premier lancement de la V0.2, **sans perte de données** :
@@ -197,22 +273,28 @@ et jamais recréées ensuite : si l'utilisateur les supprime, elles ne reviennen
 
 ## Format de sauvegarde
 
-Le format passe en **version 2**. Les sauvegardes V0.1 (v1) restent importables :
-elles sont migrées à la volée, sans erreur ni perte.
+Le format passe en **version 3**. Les sauvegardes **v1 (V0.1) et v2 (V0.2)
+restent importables** : les événements sont migrés à la volée et les collections
+absentes deviennent des tableaux vides — exactement l'état d'un événement dont
+aucun module n'est utilisé.
 
 ```jsonc
 {
   "signature": "mes-aventures-backup",
-  "formatVersion": 2,
-  "appVersion": "0.2.0",
+  "formatVersion": 3,
+  "appVersion": "0.3.0",
   "createdAt": "2026-07-29T06:00:00.000Z",
   "data": {
     "events":    [ /* nouveaux champs inclus : category, allDay, imageKey */ ],
     "trips":     [ /* ... */ ],
     "reminders": [ /* ... */ ],
     "documents": [ /* ... */ ],
+    "tasks":        [ /* V0.3 */ ],
+    "participants": [ /* V0.3 */ ],
+    "items":        [ /* V0.3 */ ],
+    "expenses":     [ /* V0.3 */ ],
     "settings":  { "displayName": "Axel", "lastBackupAt": null,
-                   "appVersion": "0.2.0", "currency": "EUR" }
+                   "appVersion": "0.3.0", "currency": "EUR" }
   }
 }
 ```
@@ -244,11 +326,16 @@ src/
 │   ├── ui/                     # briques réutilisables (Card, Button, Alert, PageHeader…)
 │   ├── icons/                  # jeu d'icônes et illustrations SVG
 │   ├── agenda/                 # MonthCalendar
-│   ├── events/                 # EventCard, EventForm
+│   ├── events/                 # EventCard, EventForm, ModuleSection,
+│   │                           #   TasksSection, ParticipantsSection,
+│   │                           #   BudgetSection, ItemsSection
+│   ├── settings/               # BackupSection
 │   └── home/                   # sections du tableau de bord
 ├── styles/                     # thème, reset, base, composants, formulaires, agenda, pages
 └── utils/
     ├── eventRules.ts           # règles métier pures (passé, tri, chevauchement, recherche)
+    ├── taskRules.ts            # état, progression, retard, réordonnancement
+    ├── budgetRules.ts          # totaux, reste, écart, répartition, dépassement
     ├── eventValidation.ts      # validation du formulaire
     ├── eventForm.ts            # valeurs initiales (création / édition / duplication)
     ├── calendar.ts             # génération de la grille mensuelle
@@ -264,7 +351,7 @@ puis par les hooks. La logique métier vit dans `utils/`, pure et testable.
 ## Procédure de test
 
 ```bash
-npm test        # 47 tests — règles métier, validation, migrations
+npm test        # 94 tests — règles métier, budget, tâches, validation, migrations
 npx tsc -b      # types
 npm run build   # build de production
 ```
@@ -276,8 +363,13 @@ Les tests automatisés couvrent :
 - **classement des événements** — tri chronologique, départage stable par titre ;
 - **détection des événements passés** — avec et sans date de fin, mode « toute la
   journée », événement en cours, événement annulé ;
-- **migrations de sauvegarde** — v1 → v2, idempotence, catégories inconnues,
-  rejet des fichiers invalides ou trop récents.
+- **migrations de sauvegarde** — v1 → v2 → v3, idempotence, catégories inconnues,
+  rejet des fichiers invalides ou trop récents, imports v1/v2 sans modules ;
+- **calculs budgétaires** — totaux, payé/non payé, reste, écart, pourcentage,
+  répartition par catégorie, dépassement, absence d'enveloppe, cadeaux intégrés,
+  robustesse aux montants illisibles et arrondi au centime ;
+- **progression et statut des tâches** — pourcentage, achèvement, comptage des
+  retards, tri par urgence, réordonnancement et bornes.
 
 ### Parcours manuel recommandé
 
@@ -304,6 +396,12 @@ Les tests automatisés couvrent :
 - La page **Voyages** reste celle de la V0.1 : elle lit la table `trips` héritée,
   qui n'est pas éditable. Les voyages se saisissent pour l'instant comme des
   événements de catégorie « Voyage ».
+- La page **Documents** est une destination avec état vide : aucun fichier ne peut
+  encore être ajouté ni consulté, conformément au périmètre.
+- Dans les **Paramètres**, le prénom affiché et les préférences d'affichage sont
+  présentés mais pas encore modifiables — les emplacements sont préparés.
+- Le réordonnancement des tâches se fait par **flèches haut/bas**, pas par
+  glisser-déposer : plus fiable au pouce et accessible au clavier.
 - Les **illustrations** se choisissent dans une sélection embarquée de quatre
   scènes ; l'import d'images personnelles est hors périmètre.
 - Aucun **événement récurrent** : chaque occurrence est un événement distinct
@@ -316,23 +414,22 @@ Les tests automatisés couvrent :
 
 ## Hors périmètre de la V0.2 (architecture préparée)
 
-Budgets détaillés · dépenses · checklists · tâches d'organisation · cadeaux ·
-objets à ramener · participants · documents et billets · géolocalisation · cartes
-interactives · notifications · synchronisation cloud · partage entre utilisateurs ·
-gestion détaillée des voyages.
+Stockage réel de documents et billets · géolocalisation · cartes interactives ·
+notifications système · gestion détaillée des voyages · synchronisation cloud ·
+partage entre utilisateurs · comptes utilisateurs.
 
-Les tables `reminders` et `documents` et les champs `participants`, `tripId`,
-`budget` existent déjà et sont préservés par les migrations et les sauvegardes :
-les modules correspondants pourront s'y brancher sans nouvelle migration lourde.
+La table `documents` existe déjà et est préservée par les migrations et les
+sauvegardes : le module correspondant pourra s'y brancher sans nouvelle migration
+lourde.
 
 ---
 
-## Prévu pour la V0.3
+## Prévu pour la V0.4
 
+- Stockage réel des documents et billets (PDF, images) en local.
 - Gestionnaire de voyage complet : itinéraire, hébergements, étapes.
-- Édition des pense-bêtes (« à ne pas oublier », cadeaux, objets à ramener).
-- Budget par événement et par voyage, avec suivi des dépenses.
-- Pièces jointes : billets, réservations, PDF et images stockés localement.
+- Modification du prénom et préférences d'affichage dans les Paramètres.
+- Budget consolidé sur plusieurs événements, et vue budget globale.
 - Événements récurrents et rappels.
 - Vue semaine dans l'agenda.
 

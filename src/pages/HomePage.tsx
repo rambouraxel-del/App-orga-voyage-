@@ -4,9 +4,10 @@ import { AgendaPreview } from '@/components/home/AgendaPreview'
 import { HomeHeader } from '@/components/home/HomeHeader'
 import { NextEventCard } from '@/components/home/NextEventCard'
 import {
-  DocumentsPreview,
   MonthSummaryPreview,
-  RemindersPreview,
+  PendingItemsPreview,
+  PreparationPreview,
+  UpcomingTasksPreview,
   UpcomingTripPreview,
 } from '@/components/home/PreviewCards'
 import { ShortcutGrid } from '@/components/home/ShortcutGrid'
@@ -44,7 +45,7 @@ export function HomePage() {
     )
   }
 
-  const { settings, nextEvent, agenda, nextTripEvent, month, reminders, documents } = data
+  const { settings, nextEvent, agenda, nextTripEvent, month } = data
 
   return (
     <>
@@ -131,15 +132,19 @@ export function HomePage() {
           </h2>
         </div>
         <div className="preview-grid">
-          <UpcomingTripPreview tripEvent={nextTripEvent} trip={data.nextTrip} />
+          <PreparationPreview
+            progress={data.nextEventProgress}
+            eventTitle={nextEvent?.title ?? null}
+          />
+          <UpcomingTasksPreview tasks={data.upcomingTasks} />
           <MonthSummaryPreview month={month} />
-          <RemindersPreview reminders={reminders} total={data.pendingReminderCount} />
-          <DocumentsPreview documents={documents} total={data.documentCount} />
+          <PendingItemsPreview items={data.pendingItems} />
+          <UpcomingTripPreview tripEvent={nextTripEvent} trip={data.nextTrip} />
         </div>
       </section>
 
       {/* --- Derniere sauvegarde -------------------------------------------- */}
-      <Link to={ROUTES.backup} className="backup-note">
+      <Link to={ROUTES.settings} className="backup-note">
         <Icon name="sauvegarde" size={16} />
         {settings.lastBackupAt
           ? `Derniere sauvegarde : ${formatDateTime(settings.lastBackupAt)}`
