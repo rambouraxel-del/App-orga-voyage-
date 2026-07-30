@@ -15,6 +15,14 @@ export interface ModuleSectionProps {
   emptyText: string
   isEmpty: boolean
   children?: ReactNode
+  /**
+   * Contenu affiche SOUS la liste, y compris quand le module est vide.
+   *
+   * Les actions d'amorcage (partir d'un modele, rattacher un element existant)
+   * vivent ici : les placer dans `children` les rendrait invisibles a l'etat
+   * vide, c'est-a-dire precisement au moment ou elles servent.
+   */
+  footer?: ReactNode
 }
 
 /**
@@ -34,6 +42,7 @@ export function ModuleSection({
   emptyText,
   isEmpty,
   children,
+  footer,
 }: ModuleSectionProps) {
   return (
     <section className="module" id={id} aria-labelledby={`${id}-titre`}>
@@ -57,6 +66,8 @@ export function ModuleSection({
       ) : (
         <div className="module__body">{children}</div>
       )}
+
+      {footer}
     </section>
   )
 }

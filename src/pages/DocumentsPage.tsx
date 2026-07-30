@@ -5,7 +5,13 @@ import { DocumentSheet } from '@/components/documents/DocumentSheet'
 import { Icon } from '@/components/icons/Icon'
 import { Alert, Button, PageHeader, SkeletonBlock, StateBlock } from '@/components/ui'
 import { STORAGE_WARNING_THRESHOLD } from '@/config/documents'
-import { documentsRepository, eventsRepository } from '@/db/repositories'
+import { db } from '@/db/database'
+import {
+  documentLinksRepository,
+  documentsRepository,
+  eventsRepository,
+  tripsRepository,
+} from '@/db/repositories'
 import { useLiveData } from '@/hooks/useLiveData'
 import { useStorageEstimate } from '@/hooks/useStorageEstimate'
 import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '@/models'
@@ -44,19 +50,58 @@ export function DocumentsPage() {
     ? (searchParams.get('categorie') as DocumentCategory)
     : null
   const eventFilter = searchParams.get('evenement')
+  const tripFilter = searchParams.get('voyage')
 
   const { data, loading, error } = useLiveData(async () => {
-    const [documents, events] = await Promise.all([
-      documentsRepository.listAll(),
-      eventsRepository.listAll(),
-    ])
+    const [documents, events, trips, links, stages, activities, transports, stays] =
+      await Promise.all([
+        documentsRepository.listAll(),
+        eventsRepository.listAll(),
+        tripsRepository.listAll(),
+        documentLinksRepository.listAll(),
+        db.tripStages.toArray(),
+        db.tripActivities.toArray(),
+        db.tripTransports.toArray(),
+        db.tripStays.toArray(),
+      ])
+
+    // Un element d'itineraire -> son voyage. Permet de remonter d'une liaison
+    // de document jusqu'au voyage concerne, en une seule passe.
+    const tripByTarget = new Map<string, string>()
+    for (const element of [...stages, ...activities, ...transports, ...stays]) {
+      tripByTarget.set(element.id, element.tripId)
+    }
+
     return {
       documents,
       events,
+      trips,
+      links,
+      tripByTarget,
       titleById: new Map(events.map((event) => [event.id, event.title])),
       totalSize: documents.reduce((sum, document) => sum + (document.size || 0), 0),
     }
   })
+
+  /**
+   * Documents d'un voyage : ceux rattaches a son evenement porteur, PLUS ceux
+   * associes a l'un de ses elements (billet d'avion, reservation d'hotel).
+   */
+  const tripDocumentIds = useMemo(() => {
+    if (!data || !tripFilter) return null
+    const trip = data.trips.find((entry) => entry.id === tripFilter)
+    if (!trip) return new Set<string>()
+
+    const ids = new Set(
+      data.documents
+        .filter((document) => document.eventId === trip.eventId)
+        .map((document) => document.id),
+    )
+    for (const link of data.links) {
+      if (data.tripByTarget.get(link.targetId) === trip.id) ids.add(link.documentId)
+    }
+    return ids
+  }, [data, tripFilter])
 
   // L'estimation est relue a chaque variation du volume stocke.
   const storage = useStorageEstimate([data?.totalSize])
@@ -83,6 +128,7 @@ export function DocumentsPage() {
         }
         if (category && document.category !== category) return false
         if (eventFilter && document.eventId !== eventFilter) return false
+        if (tripDocumentIds && !tripDocumentIds.has(document.id)) return false
         if (needle.length === 0) return true
 
         const eventTitle = document.eventId ? (data.titleById.get(document.eventId) ?? '') : ''
@@ -95,9 +141,10 @@ export function DocumentsPage() {
         if (sort === 'recent') return b.createdAt.localeCompare(a.createdAt)
         return (a.usefulDate ?? '9999').localeCompare(b.usefulDate ?? '9999')
       })
-  }, [data, view, category, eventFilter, query, sort])
+  }, [data, view, category, eventFilter, tripDocumentIds, query, sort])
 
-  const filtersActive = category !== null || eventFilter !== null || query.trim().length > 0
+  const filtersActive =
+    category !== null || eventFilter !== null || tripFilter !== null || query.trim().length > 0
 
   return (
     <>
@@ -195,7 +242,27 @@ export function DocumentsPage() {
             ))}
           </div>
 
-          {/* --- Evenement + tri ------------------------------------------------ */}
+          {/* --- Voyage + evenement + tri --------------------------------------- */}
+          {data.trips.length > 0 ? (
+            <div className="filter-row">
+              <label className="filter-row__field">
+                <span className="visually-hidden">Filtrer par voyage</span>
+                <select
+                  className="field__input field__input--select"
+                  value={tripFilter ?? ''}
+                  onChange={(e) => updateParam('voyage', e.target.value || null)}
+                >
+                  <option value="">Tous les voyages</option>
+                  {data.trips.map((trip) => (
+                    <option key={trip.id} value={trip.id}>
+                      {trip.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
+
           <div className="filter-row">
             <label className="filter-row__field">
               <span className="visually-hidden">Filtrer par evenement</span>

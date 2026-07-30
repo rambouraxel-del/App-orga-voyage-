@@ -13,7 +13,17 @@ import { SETTINGS_KEY } from '@/models'
 export async function seedIfEmpty(): Promise<boolean> {
   return db.transaction(
     'rw',
-    [db.events, db.trips, db.reminders, db.documents, db.settings],
+    [
+      db.events,
+      db.trips,
+      db.tripStages,
+      db.tripActivities,
+      db.tripTransports,
+      db.tripStays,
+      db.reminders,
+      db.documents,
+      db.settings,
+    ],
     async () => {
       const existing = await db.settings.get(SETTINGS_KEY)
       if (existing) return false
@@ -31,6 +41,10 @@ export async function seedIfEmpty(): Promise<boolean> {
       await Promise.all([
         db.events.bulkPut(seed.events),
         db.trips.bulkPut(seed.trips),
+        db.tripStages.bulkPut(seed.tripStages),
+        db.tripActivities.bulkPut(seed.tripActivities),
+        db.tripTransports.bulkPut(seed.tripTransports),
+        db.tripStays.bulkPut(seed.tripStays),
         db.reminders.bulkPut(seed.reminders),
         db.documents.bulkPut(seed.documents),
         db.settings.put(seed.settings),

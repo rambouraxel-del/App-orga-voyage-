@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MonthCalendar } from '@/components/agenda/MonthCalendar'
+import { TripDayDetails, collectTripDay } from '@/components/agenda/TripDayDetails'
 import { EventCard } from '@/components/events/EventCard'
 import { Icon } from '@/components/icons/Icon'
 import { Button, PageHeader, SkeletonBlock, StateBlock } from '@/components/ui'
+import { db } from '@/db/database'
 import { eventsRepository } from '@/db/repositories'
 import { useLiveData } from '@/hooks/useLiveData'
 import type { AppEvent } from '@/models'
@@ -39,13 +41,35 @@ export function AgendaPage() {
   })
   const [selectedDay, setSelectedDay] = useState(() => new Date())
 
-  const { data, loading, error } = useLiveData(() => eventsRepository.listAll())
-  const events = useMemo(() => data ?? [], [data])
+  // Les evenements ET le contenu des voyages : l'agenda doit montrer ce qui se
+  // passe chaque jour, pas seulement qu'un voyage est en cours.
+  const { data, loading, error } = useLiveData(async () => {
+    const [events, trips, transports, stays, activities] = await Promise.all([
+      eventsRepository.listAll(),
+      db.trips.toArray(),
+      db.tripTransports.toArray(),
+      db.tripStays.toArray(),
+      db.tripActivities.toArray(),
+    ])
+    return { events, trips, transports, stays, activities }
+  })
+  const events = useMemo(() => data?.events ?? [], [data])
 
   const dayEvents = useMemo(
     () => events.filter((event) => occursOnDay(event, selectedDay)).sort(compareByStart),
     [events, selectedDay],
   )
+
+  const tripDayContent = useMemo(() => {
+    if (!data) return []
+    return collectTripDay(
+      dayKey(selectedDay),
+      data.trips,
+      data.transports,
+      data.stays,
+      data.activities,
+    )
+  }, [data, selectedDay])
 
   const upcomingGroups = useMemo(
     () => groupByDay(events.filter((event) => isUpcoming(event))),
@@ -146,13 +170,17 @@ export function AgendaPage() {
               </span>
             </div>
 
+            {tripDayContent.map((content) => (
+              <TripDayDetails key={content.trip.id} content={content} />
+            ))}
+
             {dayEvents.length > 0 ? (
               <div className="stack--lg stack">
                 {dayEvents.map((event) => (
                   <EventCard key={event.id} event={event} hideDate />
                 ))}
               </div>
-            ) : (
+            ) : tripDayContent.length > 0 ? null : (
               <StateBlock
                 icon="calendrier"
                 title="Rien ce jour-la"

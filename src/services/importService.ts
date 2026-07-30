@@ -1,7 +1,8 @@
 import { APP_VERSION } from '@/config/app'
 import { db } from '@/db/database'
-import { SETTINGS_KEY, type AppSettings, type BackupFile } from '@/models'
+import { SETTINGS_KEY, type AppSettings, type BackupFile, type Trip } from '@/models'
 import { nowIso } from '@/utils/date'
+import { ensureTripEvents } from '@/utils/tripSync'
 import { parseBackupText } from './backupValidation'
 import { AppError, ERROR_MESSAGES } from './errors'
 import { BACKUP_JSON_NAME } from './exportService'
@@ -25,6 +26,8 @@ export interface BackupPreview {
     participants: number
     items: number
     expenses: number
+    /** Elements d'itineraire (etapes, activites, transports, hebergements). */
+    tripContent: number
     files: number
   }
   /** Documents dont le fichier attendu est absent ou illisible dans l'archive. */
@@ -144,6 +147,11 @@ export async function prepareImport(file: File): Promise<BackupPreview> {
       participants: backup.data.participants?.length ?? 0,
       items: backup.data.items?.length ?? 0,
       expenses: backup.data.expenses?.length ?? 0,
+      tripContent:
+        (backup.data.tripStages?.length ?? 0) +
+        (backup.data.tripActivities?.length ?? 0) +
+        (backup.data.tripTransports?.length ?? 0) +
+        (backup.data.tripStays?.length ?? 0),
       files: files.size,
     },
     missingFiles,
@@ -161,15 +169,34 @@ export async function applyImport(preview: BackupPreview): Promise<ImportResult>
   const { backup, files } = preview
   const {
     events,
-    trips,
     reminders = [],
     documents = [],
     tasks = [],
     participants = [],
     items = [],
     expenses = [],
+    tripStages = [],
+    tripActivities = [],
+    tripTransports = [],
+    tripStays = [],
+    documentLinks = [],
     settings,
   } = backup.data
+
+  /**
+   * Retablit le lien voyage <-> evenement porteur.
+   *
+   * Une sauvegarde v1 a v4 contient des voyages sans `eventId` : sans cette
+   * etape, ils seraient restaures invisibles dans l'agenda et incapables de
+   * porter taches, participants ou documents. Meme regle que la migration
+   * Dexie v5, appliquee ici avant l'ecriture.
+   */
+  const linked = ensureTripEvents(
+    backup.data.trips as unknown as Array<Record<string, unknown>>,
+    events,
+  )
+  const trips = linked.trips as unknown as Trip[]
+  const restoredEvents = [...events, ...linked.createdEvents]
 
   // Un document dont le fichier n'a pas ete retrouve garde sa fiche, mais ses
   // metadonnees de fichier sont remises a zero : mieux vaut une fiche
@@ -186,6 +213,11 @@ export async function applyImport(preview: BackupPreview): Promise<ImportResult>
       [
         db.events,
         db.trips,
+        db.tripStages,
+        db.tripActivities,
+        db.tripTransports,
+        db.tripStays,
+        db.documentLinks,
         db.reminders,
         db.documents,
         db.documentFiles,
@@ -201,6 +233,11 @@ export async function applyImport(preview: BackupPreview): Promise<ImportResult>
         await Promise.all([
           db.events.clear(),
           db.trips.clear(),
+          db.tripStages.clear(),
+          db.tripActivities.clear(),
+          db.tripTransports.clear(),
+          db.tripStays.clear(),
+          db.documentLinks.clear(),
           db.reminders.clear(),
           db.documents.clear(),
           db.documentFiles.clear(),
@@ -222,8 +259,19 @@ export async function applyImport(preview: BackupPreview): Promise<ImportResult>
         }
 
         await Promise.all([
-          db.events.bulkPut(events),
+          db.events.bulkPut(restoredEvents),
           db.trips.bulkPut(trips),
+          db.tripStages.bulkPut(tripStages),
+          db.tripActivities.bulkPut(tripActivities),
+          db.tripTransports.bulkPut(tripTransports),
+          db.tripStays.bulkPut(tripStays),
+          // Les liaisons pointant vers un document disparu sont ecartees :
+          // une association orpheline n'affiche rien et fausse les comptes.
+          db.documentLinks.bulkPut(
+            documentLinks.filter((link) =>
+              restoredDocuments.some((document) => document.id === link.documentId),
+            ),
+          ),
           db.reminders.bulkPut(reminders),
           db.documents.bulkPut(restoredDocuments),
           db.documentFiles.bulkPut(
@@ -243,14 +291,18 @@ export async function applyImport(preview: BackupPreview): Promise<ImportResult>
 
   return {
     itemCount:
-      events.length +
+      restoredEvents.length +
       trips.length +
       reminders.length +
       restoredDocuments.length +
       tasks.length +
       participants.length +
       items.length +
-      expenses.length,
+      expenses.length +
+      tripStages.length +
+      tripActivities.length +
+      tripTransports.length +
+      tripStays.length,
     fileCount: files.size,
     missingFiles: preview.missingFiles,
   }

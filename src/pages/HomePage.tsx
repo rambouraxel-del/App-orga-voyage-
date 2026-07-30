@@ -3,6 +3,7 @@ import { Icon } from '@/components/icons/Icon'
 import { AgendaPreview } from '@/components/home/AgendaPreview'
 import { HomeHeader } from '@/components/home/HomeHeader'
 import { NextEventCard } from '@/components/home/NextEventCard'
+import { NextTripCard } from '@/components/home/NextTripCard'
 import {
   DocumentsPreview,
   MonthSummaryPreview,
@@ -98,6 +99,21 @@ export function HomePage() {
             )}
           </section>
 
+          {/* --- Prochain voyage ---------------------------------------- */}
+          {data.nextTripSummary ? (
+            <section className="section" aria-labelledby="titre-voyage">
+              <div className="section-header">
+                <h2 className="section-title" id="titre-voyage">
+                  Prochain voyage
+                </h2>
+                <Link to={ROUTES.trips} className="section-action">
+                  Tout voir
+                </Link>
+              </div>
+              <NextTripCard summary={data.nextTripSummary} />
+            </section>
+          ) : null}
+
           {/* --- Agenda a venir ----------------------------------------- */}
           {agenda.length > 0 ? (
             <section className="section" aria-labelledby="titre-agenda">
@@ -148,7 +164,11 @@ export function HomePage() {
               expiring={data.expiringDocuments}
             />
           ) : null}
-          <UpcomingTripPreview tripEvent={nextTripEvent} trip={data.nextTrip} />
+          {/* La vignette ne sert que de repli : quand la carte complete du
+              prochain voyage est affichee plus haut, elle ferait doublon. */}
+          {data.nextTripSummary ? null : (
+            <UpcomingTripPreview tripEvent={nextTripEvent} trip={data.nextTrip} />
+          )}
         </div>
       </section>
 

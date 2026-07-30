@@ -5,6 +5,13 @@ import type { Participant } from './participant'
 import type { EventItem } from './item'
 import type { Expense } from './expense'
 import type { Trip } from './trip'
+import type {
+  DocumentLink,
+  TripActivity,
+  TripStage,
+  TripStay,
+  TripTransport,
+} from './tripPlan'
 import type { Reminder } from './reminder'
 import type { TravelDocument } from './document'
 import type { AppSettings } from './settings'
@@ -18,11 +25,15 @@ import type { AppSettings } from './settings'
  * v3 (V0.3) : ajout des taches, participants, objets/cadeaux et depenses.
  * v4 (V0.4) : documents avec fichiers reels. L'export devient une ARCHIVE ZIP
  *             contenant `sauvegarde.json` et un dossier `documents/`.
+ * v5 (V0.5) : voyages relies a un evenement porteur (`eventId`), plus les
+ *             etapes, activites, transports, hebergements et liaisons de
+ *             documents.
  *
- * Les fichiers v1 et v2 restent importables : les collections absentes sont
- * simplement vides apres import, et les evenements sont migres a la volee.
+ * Les fichiers v1 a v4 restent importables : les collections absentes sont
+ * simplement vides apres import, les evenements et voyages sont migres a la
+ * volee, et l'evenement porteur manquant d'un voyage est recree.
  */
-export const BACKUP_FORMAT_VERSION = 4
+export const BACKUP_FORMAT_VERSION = 5
 
 /** Marqueur permettant de reconnaitre un fichier produit par l'application. */
 export const BACKUP_SIGNATURE = 'mes-aventures-backup'
@@ -53,6 +64,12 @@ export interface BackupFile {
     participants?: Participant[]
     items?: EventItem[]
     expenses?: Expense[]
+    /** Contenu des voyages V0.5 — absent des sauvegardes v1 a v4. */
+    tripStages?: TripStage[]
+    tripActivities?: TripActivity[]
+    tripTransports?: TripTransport[]
+    tripStays?: TripStay[]
+    documentLinks?: DocumentLink[]
     settings: BackupSettings
   }
   /**

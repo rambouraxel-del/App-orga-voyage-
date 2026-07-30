@@ -1,7 +1,7 @@
 /** Constantes applicatives centralisees. */
 
 export const APP_NAME = 'Mes Aventures'
-export const APP_VERSION = '0.4.0'
+export const APP_VERSION = '0.5.0'
 
 /** Nom de la base IndexedDB. */
 export const DB_NAME = 'mes-aventures'

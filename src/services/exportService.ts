@@ -19,18 +19,37 @@ export const BACKUP_FILES_DIR = 'documents'
 
 /** Construit l'objet de sauvegarde a partir du contenu actuel de la base. */
 export async function buildBackup(): Promise<BackupFile> {
-  const [events, trips, reminders, documents, tasks, participants, items, expenses, settings] =
-    await Promise.all([
-      db.events.toArray(),
-      db.trips.toArray(),
-      db.reminders.toArray(),
-      db.documents.toArray(),
-      db.tasks.toArray(),
-      db.participants.toArray(),
-      db.items.toArray(),
-      db.expenses.toArray(),
-      settingsRepository.get(),
-    ])
+  const [
+    events,
+    trips,
+    reminders,
+    documents,
+    tasks,
+    participants,
+    items,
+    expenses,
+    tripStages,
+    tripActivities,
+    tripTransports,
+    tripStays,
+    documentLinks,
+    settings,
+  ] = await Promise.all([
+    db.events.toArray(),
+    db.trips.toArray(),
+    db.reminders.toArray(),
+    db.documents.toArray(),
+    db.tasks.toArray(),
+    db.participants.toArray(),
+    db.items.toArray(),
+    db.expenses.toArray(),
+    db.tripStages.toArray(),
+    db.tripActivities.toArray(),
+    db.tripTransports.toArray(),
+    db.tripStays.toArray(),
+    db.documentLinks.toArray(),
+    settingsRepository.get(),
+  ])
 
   return {
     signature: BACKUP_SIGNATURE,
@@ -46,6 +65,11 @@ export async function buildBackup(): Promise<BackupFile> {
       participants,
       items,
       expenses,
+      tripStages,
+      tripActivities,
+      tripTransports,
+      tripStays,
+      documentLinks,
       settings: {
         displayName: settings.displayName,
         lastBackupAt: settings.lastBackupAt,
@@ -185,7 +209,12 @@ export async function exportBackup(
         (backup.data.tasks?.length ?? 0) +
         (backup.data.participants?.length ?? 0) +
         (backup.data.items?.length ?? 0) +
-        (backup.data.expenses?.length ?? 0),
+        (backup.data.expenses?.length ?? 0) +
+        (backup.data.tripStages?.length ?? 0) +
+        (backup.data.tripActivities?.length ?? 0) +
+        (backup.data.tripTransports?.length ?? 0) +
+        (backup.data.tripStays?.length ?? 0) +
+        (backup.data.documentLinks?.length ?? 0),
       fileCount: manifest.length,
       archiveSize: blob.size,
       backedUpAt,

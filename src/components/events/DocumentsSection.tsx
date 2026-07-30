@@ -78,6 +78,27 @@ export function DocumentsSection({
         onAdd={() => setAdding(true)}
         isEmpty={documents.length === 0}
         emptyText="Aucun document rattache. Importe un billet ou une reservation pour l’avoir sous la main le jour J."
+        footer={
+          <>
+            <div className="module__links">
+              {available.length > 0 ? (
+                <button type="button" className="link-button" onClick={() => setLinking(true)}>
+                  Rattacher un document existant
+                </button>
+              ) : null}
+              {documents.length > 0 ? (
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => navigate(documentsPath({ eventId }))}
+                >
+                  Voir dans la bibliotheque
+                </button>
+              ) : null}
+            </div>
+            {error ? <Badge tone="blush">{error}</Badge> : null}
+          </>
+        }
         summary={
           documents.length > 0 ? (
             <p className="module__summary-text">
@@ -123,25 +144,6 @@ export function DocumentsSection({
             </li>
           ))}
         </ul>
-
-        <div className="module__links">
-          {available.length > 0 ? (
-            <button type="button" className="link-button" onClick={() => setLinking(true)}>
-              Rattacher un document existant
-            </button>
-          ) : null}
-          {documents.length > 0 ? (
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => navigate(documentsPath({ eventId }))}
-            >
-              Voir dans la bibliotheque
-            </button>
-          ) : null}
-        </div>
-
-        {error ? <Badge tone="blush">{error}</Badge> : null}
       </ModuleSection>
 
       {/* Import direct, avec l'evenement deja pre-selectionne. */}

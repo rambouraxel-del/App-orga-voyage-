@@ -1,18 +1,26 @@
 import {
+  ACTIVITY_CATEGORIES,
+  ACTIVITY_STATUSES,
   BACKUP_FORMAT_VERSION,
   BACKUP_SIGNATURE,
+  BOOKING_STATUSES,
+  DOCUMENT_LINK_TARGETS,
   EVENT_CATEGORIES,
   EVENT_STATUSES,
   EXPENSE_CATEGORIES,
   ITEM_KINDS,
   ITEM_STATUSES,
   PARTICIPANT_STATUSES,
+  STAGE_STATUSES,
+  STAY_KINDS,
   TASK_PRIORITIES,
+  TRANSPORT_MODES,
   TRIP_STATUSES,
   REMINDER_CATEGORIES,
   DOCUMENT_CATEGORIES,
   type AppEvent,
   type BackupFile,
+  type DocumentLink,
   type EventItem,
   type EventTask,
   type Expense,
@@ -20,8 +28,12 @@ import {
   type Reminder,
   type TravelDocument,
   type Trip,
+  type TripActivity,
+  type TripStage,
+  type TripStay,
+  type TripTransport,
 } from '@/models'
-import { migrateDocumentToV4, migrateEventToV2 } from '@/db/database'
+import { migrateDocumentToV4, migrateEventToV2, migrateTripToV5 } from '@/db/database'
 import { AppError, ERROR_MESSAGES } from './errors'
 
 /* ------------------------------------------------------------------ */
@@ -89,23 +101,32 @@ function parseEvent(raw: unknown, index: number): AppEvent {
 function parseTrip(raw: unknown, index: number): Trip {
   const path = `data.trips[${index}]`
   if (!isObject(raw)) invalid(path, 'objet attendu')
-  if (!isNonEmptyString(raw.id)) invalid(`${path}.id`, 'identifiant manquant')
-  if (!isNonEmptyString(raw.title)) invalid(`${path}.title`, 'titre manquant')
-  if (!isIsoDate(raw.startDate)) invalid(`${path}.startDate`, 'date de debut invalide')
-  if (!isIsoDate(raw.endDate)) invalid(`${path}.endDate`, 'date de fin invalide')
+
+  // Un voyage v1-v4 porte `image`, `notes` et d'anciens statuts : on le ramene
+  // au format v5 avant de valider.
+  const trip = migrateTripToV5({ ...raw })
+
+  if (!isNonEmptyString(trip.id)) invalid(`${path}.id`, 'identifiant manquant')
+  if (!isNonEmptyString(trip.title)) invalid(`${path}.title`, 'titre manquant')
+  if (!isIsoDate(trip.startDate)) invalid(`${path}.startDate`, 'date de debut invalide')
+  if (!isIsoDate(trip.endDate)) invalid(`${path}.endDate`, 'date de fin invalide')
 
   return {
-    id: raw.id,
-    title: raw.title,
-    destination: typeof raw.destination === 'string' ? raw.destination : '',
-    startDate: raw.startDate,
-    endDate: raw.endDate,
-    status: isOneOf(raw.status, TRIP_STATUSES) ? raw.status : 'planifie',
-    ...(isNonEmptyString(raw.image) ? { image: raw.image } : {}),
-    ...(typeof raw.notes === 'string' ? { notes: raw.notes } : {}),
-    ...(typeof raw.budget === 'number' ? { budget: raw.budget } : {}),
-    createdAt: isIsoDate(raw.createdAt) ? raw.createdAt : raw.startDate,
-    updatedAt: isIsoDate(raw.updatedAt) ? raw.updatedAt : raw.startDate,
+    id: trip.id,
+    // `eventId` est retabli a l'import : un voyage sans evenement porteur
+    // serait invisible dans l'agenda (cf. `applyImport`).
+    eventId: isNonEmptyString(trip.eventId) ? trip.eventId : '',
+    title: trip.title,
+    destination: typeof trip.destination === 'string' ? trip.destination : '',
+    ...(isNonEmptyString(trip.origin) ? { origin: trip.origin } : {}),
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    status: isOneOf(trip.status, TRIP_STATUSES) ? trip.status : 'preparation',
+    ...(isNonEmptyString(trip.description) ? { description: trip.description } : {}),
+    ...(isNonEmptyString(trip.imageKey) ? { imageKey: trip.imageKey } : {}),
+    ...(typeof trip.budget === 'number' ? { budget: trip.budget } : {}),
+    createdAt: isIsoDate(trip.createdAt) ? trip.createdAt : trip.startDate,
+    updatedAt: isIsoDate(trip.updatedAt) ? trip.updatedAt : trip.startDate,
   }
 }
 
@@ -242,6 +263,134 @@ function parseExpense(raw: unknown, index: number): Expense {
 }
 
 /* ------------------------------------------------------------------ */
+/* Contenu des voyages (V0.5)                                          */
+/* ------------------------------------------------------------------ */
+
+/** Champs communs aux quatre collections rattachees a un voyage. */
+function parseTripChildBase(raw: Record<string, unknown>, path: string) {
+  if (!isNonEmptyString(raw.id)) invalid(`${path}.id`, 'identifiant manquant')
+  if (!isNonEmptyString(raw.tripId)) invalid(`${path}.tripId`, 'voyage parent manquant')
+  const stamp = isIsoDate(raw.createdAt) ? raw.createdAt : new Date(0).toISOString()
+  return {
+    id: raw.id,
+    tripId: raw.tripId,
+    createdAt: stamp,
+    updatedAt: isIsoDate(raw.updatedAt) ? raw.updatedAt : stamp,
+  }
+}
+
+/** `AAAA-MM-JJ`, format des journees et des nuits. */
+const isDayKey = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+
+function parseStage(raw: unknown, index: number): TripStage {
+  const path = `data.tripStages[${index}]`
+  if (!isObject(raw)) invalid(path, 'objet attendu')
+  if (!isNonEmptyString(raw.place)) invalid(`${path}.place`, 'lieu manquant')
+  return {
+    ...parseTripChildBase(raw, path),
+    place: raw.place,
+    ...(isNonEmptyString(raw.address) ? { address: raw.address } : {}),
+    ...(isIsoDate(raw.startDate) ? { startDate: raw.startDate } : {}),
+    ...(isIsoDate(raw.endDate) ? { endDate: raw.endDate } : {}),
+    ...(isNonEmptyString(raw.note) ? { note: raw.note } : {}),
+    status: isOneOf(raw.status, STAGE_STATUSES) ? raw.status : 'prevu',
+    order: finiteOr(raw.order, index),
+  }
+}
+
+function parseActivity(raw: unknown, index: number): TripActivity {
+  const path = `data.tripActivities[${index}]`
+  if (!isObject(raw)) invalid(path, 'objet attendu')
+  if (!isNonEmptyString(raw.title)) invalid(`${path}.title`, 'titre manquant')
+  if (!isDayKey(raw.day)) invalid(`${path}.day`, 'journee AAAA-MM-JJ attendue')
+  return {
+    ...parseTripChildBase(raw, path),
+    day: raw.day,
+    ...(isNonEmptyString(raw.time) ? { time: raw.time } : {}),
+    title: raw.title,
+    ...(isNonEmptyString(raw.place) ? { place: raw.place } : {}),
+    category: isOneOf(raw.category, ACTIVITY_CATEGORIES) ? raw.category : 'autre',
+    bookingRequired: raw.bookingRequired === true,
+    ...(typeof raw.plannedCost === 'number' && Number.isFinite(raw.plannedCost)
+      ? { plannedCost: raw.plannedCost }
+      : {}),
+    ...(typeof raw.actualCost === 'number' && Number.isFinite(raw.actualCost)
+      ? { actualCost: raw.actualCost }
+      : {}),
+    ...(isNonEmptyString(raw.note) ? { note: raw.note } : {}),
+    status: isOneOf(raw.status, ACTIVITY_STATUSES) ? raw.status : 'idee',
+    order: finiteOr(raw.order, index),
+  }
+}
+
+function parseTransport(raw: unknown, index: number): TripTransport {
+  const path = `data.tripTransports[${index}]`
+  if (!isObject(raw)) invalid(path, 'objet attendu')
+  if (!isIsoDate(raw.departure)) invalid(`${path}.departure`, 'date de depart invalide')
+  return {
+    ...parseTripChildBase(raw, path),
+    mode: isOneOf(raw.mode, TRANSPORT_MODES) ? raw.mode : 'autre',
+    from: typeof raw.from === 'string' ? raw.from : '',
+    to: typeof raw.to === 'string' ? raw.to : '',
+    departure: raw.departure,
+    ...(isIsoDate(raw.arrival) ? { arrival: raw.arrival } : {}),
+    ...(isNonEmptyString(raw.company) ? { company: raw.company } : {}),
+    ...(isNonEmptyString(raw.reference) ? { reference: raw.reference } : {}),
+    ...(typeof raw.plannedPrice === 'number' && Number.isFinite(raw.plannedPrice)
+      ? { plannedPrice: raw.plannedPrice }
+      : {}),
+    ...(typeof raw.actualPrice === 'number' && Number.isFinite(raw.actualPrice)
+      ? { actualPrice: raw.actualPrice }
+      : {}),
+    status: isOneOf(raw.status, BOOKING_STATUSES) ? raw.status : 'a-reserver',
+    ...(isNonEmptyString(raw.note) ? { note: raw.note } : {}),
+  }
+}
+
+function parseStay(raw: unknown, index: number): TripStay {
+  const path = `data.tripStays[${index}]`
+  if (!isObject(raw)) invalid(path, 'objet attendu')
+  if (!isNonEmptyString(raw.name)) invalid(`${path}.name`, 'nom manquant')
+  if (!isDayKey(raw.checkIn)) invalid(`${path}.checkIn`, 'date AAAA-MM-JJ attendue')
+  if (!isDayKey(raw.checkOut)) invalid(`${path}.checkOut`, 'date AAAA-MM-JJ attendue')
+  return {
+    ...parseTripChildBase(raw, path),
+    name: raw.name,
+    kind: isOneOf(raw.kind, STAY_KINDS) ? raw.kind : 'autre',
+    ...(isNonEmptyString(raw.address) ? { address: raw.address } : {}),
+    checkIn: raw.checkIn,
+    checkOut: raw.checkOut,
+    ...(isNonEmptyString(raw.checkInTime) ? { checkInTime: raw.checkInTime } : {}),
+    ...(isNonEmptyString(raw.checkOutTime) ? { checkOutTime: raw.checkOutTime } : {}),
+    ...(isNonEmptyString(raw.contact) ? { contact: raw.contact } : {}),
+    ...(isNonEmptyString(raw.reference) ? { reference: raw.reference } : {}),
+    ...(typeof raw.plannedPrice === 'number' && Number.isFinite(raw.plannedPrice)
+      ? { plannedPrice: raw.plannedPrice }
+      : {}),
+    ...(typeof raw.actualPrice === 'number' && Number.isFinite(raw.actualPrice)
+      ? { actualPrice: raw.actualPrice }
+      : {}),
+    status: isOneOf(raw.status, BOOKING_STATUSES) ? raw.status : 'a-reserver',
+    ...(isNonEmptyString(raw.note) ? { note: raw.note } : {}),
+  }
+}
+
+function parseDocumentLink(raw: unknown, index: number): DocumentLink {
+  const path = `data.documentLinks[${index}]`
+  if (!isObject(raw)) invalid(path, 'objet attendu')
+  if (!isNonEmptyString(raw.id)) invalid(`${path}.id`, 'identifiant manquant')
+  if (!isNonEmptyString(raw.documentId)) invalid(`${path}.documentId`, 'document manquant')
+  if (!isNonEmptyString(raw.targetId)) invalid(`${path}.targetId`, 'element cible manquant')
+  return {
+    id: raw.id,
+    documentId: raw.documentId,
+    targetType: isOneOf(raw.targetType, DOCUMENT_LINK_TARGETS) ? raw.targetType : 'transport',
+    targetId: raw.targetId,
+    createdAt: isIsoDate(raw.createdAt) ? raw.createdAt : new Date(0).toISOString(),
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Validation du fichier complet                                       */
 /* ------------------------------------------------------------------ */
 
@@ -289,6 +438,21 @@ export function validateBackup(raw: unknown): BackupFile {
   if (data.expenses !== undefined && !Array.isArray(data.expenses)) {
     invalid('data.expenses', 'tableau attendu')
   }
+  if (data.tripStages !== undefined && !Array.isArray(data.tripStages)) {
+    invalid('data.tripStages', 'tableau attendu')
+  }
+  if (data.tripActivities !== undefined && !Array.isArray(data.tripActivities)) {
+    invalid('data.tripActivities', 'tableau attendu')
+  }
+  if (data.tripTransports !== undefined && !Array.isArray(data.tripTransports)) {
+    invalid('data.tripTransports', 'tableau attendu')
+  }
+  if (data.tripStays !== undefined && !Array.isArray(data.tripStays)) {
+    invalid('data.tripStays', 'tableau attendu')
+  }
+  if (data.documentLinks !== undefined && !Array.isArray(data.documentLinks)) {
+    invalid('data.documentLinks', 'tableau attendu')
+  }
   if (!isObject(data.settings)) invalid('data.settings', 'objet attendu')
 
   // Manifeste des fichiers (v4+). Une entree incomplete est ignoree plutot que
@@ -328,6 +492,13 @@ export function validateBackup(raw: unknown): BackupFile {
       participants: (data.participants ?? []).map(parseParticipant),
       items: (data.items ?? []).map(parseItem),
       expenses: (data.expenses ?? []).map(parseExpense),
+      // Contenu des voyages : absent des sauvegardes v1 a v4, le voyage est
+      // alors restaure sans itineraire, ce qui est son etat d'origine.
+      tripStages: (data.tripStages ?? []).map(parseStage),
+      tripActivities: (data.tripActivities ?? []).map(parseActivity),
+      tripTransports: (data.tripTransports ?? []).map(parseTransport),
+      tripStays: (data.tripStays ?? []).map(parseStay),
+      documentLinks: (data.documentLinks ?? []).map(parseDocumentLink),
       settings: {
         displayName: isNonEmptyString(settings.displayName) ? settings.displayName : 'Axel',
         lastBackupAt: isIsoDate(settings.lastBackupAt) ? settings.lastBackupAt : null,
