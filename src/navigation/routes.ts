@@ -9,6 +9,9 @@ export const ROUTES = {
   eventDetail: '/evenements/:id',
   eventEdit: '/evenements/:id/modifier',
   trips: '/voyages',
+  tripNew: '/voyages/nouveau',
+  tripDetail: '/voyages/:id',
+  tripEdit: '/voyages/:id/modifier',
   documents: '/documents',
   documentDetail: '/documents/:id',
   settings: '/parametres',
@@ -46,6 +49,17 @@ export const documentsPath = (options?: { category?: string; eventId?: string; v
   if (options?.vue) params.set('vue', options.vue)
   const query = params.toString()
   return query ? `${ROUTES.documents}?${query}` : ROUTES.documents
+}
+
+export const tripDetailPath = (id: string) => `/voyages/${encodeURIComponent(id)}`
+export const tripEditPath = (id: string) => `/voyages/${encodeURIComponent(id)}/modifier`
+
+/** Liste des voyages, avec statut pre-selectionne depuis un raccourci. */
+export const tripsPath = (options?: { status?: string }) => {
+  const params = new URLSearchParams()
+  if (options?.status) params.set('statut', options.status)
+  const query = params.toString()
+  return query ? `${ROUTES.trips}?${query}` : ROUTES.trips
 }
 
 export const eventsPath = (options?: { category?: string; scope?: string }) => {

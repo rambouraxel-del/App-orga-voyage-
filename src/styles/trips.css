@@ -1,0 +1,476 @@
+/**
+ * V0.5 — Voyages : liste, itineraire, programme, transports, hebergements.
+ * Meme grammaire visuelle que les modules d'evenement ; rien de specifique
+ * n'est introduit sans raison.
+ */
+
+/* --- Liste des voyages ------------------------------------------------------ */
+
+.trip-card__link {
+  display: block;
+  color: inherit;
+}
+
+/* Le prochain voyage se distingue par un liseré cuir, pas par une couleur de
+   fond : la carte reste lisible et la hierarchie discrete. */
+.trip-card--highlight {
+  outline: 2px solid var(--c-leather-soft);
+  outline-offset: 0;
+}
+
+.trip-overview {
+  margin-top: var(--s-4);
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-xs);
+}
+
+.trip-overview__text {
+  margin-top: var(--s-2);
+  font-size: 0.82rem;
+  color: var(--c-ink-soft);
+}
+
+/* --- Carte « prochain voyage » de l'accueil --------------------------------- */
+
+.next-trip {
+  overflow: hidden;
+  padding: 0;
+}
+
+.next-trip__link {
+  display: block;
+  color: inherit;
+}
+
+.next-trip__banner {
+  position: relative;
+  height: 128px;
+}
+
+.next-trip__illustration {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.next-trip__countdown {
+  position: absolute;
+  top: var(--s-3);
+  left: var(--s-3);
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-pill);
+  background: var(--c-leather);
+  color: var(--c-on-leather);
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.next-trip__body {
+  padding: var(--s-4) var(--s-5) var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.next-trip__title {
+  font-family: var(--font-display);
+  font-size: 1.18rem;
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+}
+
+.next-trip__dates,
+.next-trip__meta {
+  margin-top: var(--s-1);
+  font-size: 0.82rem;
+  color: var(--c-ink-soft);
+}
+
+.next-trip__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-5);
+  border-top: 1px solid var(--border-soft);
+  font-size: 0.82rem;
+  color: var(--c-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.next-trip__row svg {
+  flex: none;
+  color: var(--c-leather-soft);
+}
+
+.next-trip__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-2) var(--s-5);
+  border-top: 1px solid var(--border-soft);
+}
+
+.next-trip__list li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: 0.82rem;
+  color: var(--c-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.next-trip__list svg {
+  flex: none;
+  color: var(--c-taupe);
+}
+
+.next-trip__list a {
+  color: var(--c-leather);
+  text-decoration: underline;
+}
+
+/* --- Compte a rebours de la fiche ------------------------------------------- */
+
+.trip-countdown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2) var(--s-3);
+}
+
+.trip-countdown__value {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--c-leather-dark);
+}
+
+.trip-countdown__meta {
+  font-size: 0.82rem;
+  color: var(--c-ink-soft);
+}
+
+/* --- Prochaines actions ------------------------------------------------------ */
+
+.next-actions {
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--c-warning-bg);
+}
+
+.next-actions__title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-warning);
+}
+
+.next-actions__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin-top: var(--s-2);
+}
+
+.next-actions__item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  min-height: 32px;
+  text-align: left;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+
+/* --- Itineraire --------------------------------------------------------------- */
+
+.stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  min-width: 0;
+}
+
+.stage__rank {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-pill);
+  background: var(--c-leather);
+  color: var(--c-on-leather);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.stage__body {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: var(--s-1) 0;
+}
+
+/* --- Programme jour par jour --------------------------------------------------- */
+
+.program {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.program__day {
+  min-width: 0;
+}
+
+.program__day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding-bottom: var(--s-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.program__day-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--c-ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.program__day-index {
+  flex: none;
+  padding: 2px var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--c-sand);
+  color: var(--c-leather-dark);
+  font-size: 0.72rem;
+}
+
+.program__day-add {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  color: var(--c-leather);
+}
+
+.program__day-empty {
+  padding: var(--s-2) 0;
+  font-size: 0.82rem;
+  color: var(--c-ink-faint);
+}
+
+.program__day--orphan {
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--c-warning-bg);
+}
+
+.program .row-list {
+  margin-top: var(--s-2);
+}
+
+.activity__time {
+  flex: none;
+  width: 46px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--c-leather);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Ligne de voyage (transport, hebergement) ---------------------------------- */
+
+.trip-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: 0;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+
+.trip-row .row {
+  background: transparent;
+}
+
+/* La pastille de statut vit dans une ligne « split » : elle a besoin de sa
+   propre respiration puisqu'elle n'est pas dans un bouton. */
+.trip-row .row--split > .badge {
+  flex: none;
+  margin-right: var(--s-3);
+}
+
+/* --- Documents rattaches a un element ------------------------------------------- */
+
+.linked-docs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-3) var(--s-3);
+}
+
+.linked-docs__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  max-width: 100%;
+  padding: 3px var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  font-size: 0.76rem;
+  color: var(--c-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.linked-docs__tag button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-pill);
+  color: var(--c-taupe-dark);
+}
+
+.linked-docs__add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 3px var(--s-2);
+  border-radius: var(--r-pill);
+  border: 1px dashed var(--border-strong);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--c-leather);
+}
+
+.linked-docs__select {
+  flex: 1 1 160px;
+  min-width: 0;
+  /* 16px minimum : en dessous, Safari iOS zoome sur le champ au focus. */
+  font-size: 16px;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--c-ink);
+}
+
+.linked-docs__error {
+  font-size: 0.76rem;
+  color: var(--c-danger);
+}
+
+/* --- Modeles de checklist --------------------------------------------------------- */
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.template-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: var(--tap-target);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  text-align: left;
+}
+
+.template-option:disabled {
+  opacity: 0.6;
+}
+
+.template-option__label {
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+
+.template-option__count {
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--c-ink-soft);
+}
+
+.sheet__hint,
+.module__hint {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--c-ink-soft);
+}
+
+.module__hint {
+  margin-top: var(--s-3);
+}
+
+/* --- Agenda : marqueurs de voyage --------------------------------------------------- */
+
+.agenda-trip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin-top: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+}
+
+.agenda-trip__line {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: 0.78rem;
+  color: var(--c-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.agenda-trip__line svg {
+  flex: none;
+  color: var(--c-leather-soft);
+}
+
+/* --- Petits ecrans (iPhone SE, 320 px) ------------------------------------------------ */
+
+@media (max-width: 360px) {
+  .activity__time {
+    width: 40px;
+    font-size: 0.74rem;
+  }
+
+  .trip-countdown__value {
+    font-size: 1.15rem;
+  }
+}

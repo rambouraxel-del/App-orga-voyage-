@@ -51,6 +51,15 @@ export const ERROR_MESSAGES = {
     "La mise a jour de la base locale a echoue. Tes donnees sont conservees : exporte une sauvegarde depuis l'onglet Sauvegarde, puis relance l'application.",
   IMPORT_WRITE:
     "La restauration a echoue. Tes donnees precedentes ont ete conservees autant que possible.",
+  TRIP_NOT_FOUND: 'Ce voyage est introuvable. Il a peut-etre ete supprime depuis un autre onglet.',
+  TRIP_SAVE: "Le voyage n'a pas pu etre enregistre. Reessaie dans un instant.",
+  TRIP_DELETE: "Le voyage n'a pas pu etre supprime. Reessaie dans un instant.",
+  TRIP_ITEM_NOT_FOUND: (label: string) =>
+    `Cet element du voyage (${label}) est introuvable. Il a peut-etre ete supprime depuis un autre onglet.`,
+  TRIP_ITEM_SAVE: (label: string) =>
+    `Cet element du voyage (${label}) n'a pas pu etre enregistre. Reessaie.`,
+  TRIP_ITEM_DELETE: (label: string) =>
+    `Cet element du voyage (${label}) n'a pas pu etre supprime. Reessaie.`,
 } as const
 
 /**

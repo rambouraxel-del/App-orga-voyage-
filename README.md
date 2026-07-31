@@ -1,4 +1,4 @@
-# Mes Aventures — v0.4
+# Mes Aventures — v0.5
 
 Application mobile personnelle pour organiser ses **sorties, soirées, événements,
 week-ends et voyages**.
@@ -10,11 +10,18 @@ Tout est **100 % local** : pas de compte, pas de serveur, pas d'API externe. Les
 données vivent dans le stockage du navigateur (IndexedDB) et ne quittent jamais
 l'appareil, sauf par un export volontaire.
 
-> **V0.1 → V0.4** : la V0.1 posait le socle technique, la V0.2 a rendu la gestion
+> **V0.1 → V0.5** : la V0.1 posait le socle technique, la V0.2 a rendu la gestion
 > d'événements réellement utilisable, la V0.3 a ajouté quatre modules facultatifs
-> par événement. La V0.4 rend le module **Documents** pleinement fonctionnel :
-> billets, réservations et fichiers sont stockés localement et consultables
-> hors connexion.
+> par événement, la V0.4 a rendu le module **Documents** pleinement fonctionnel.
+> La V0.5 transforme l'onglet **Voyages** en véritable gestionnaire : itinéraire,
+> programme jour par jour, transports, hébergements, budget consolidé et
+> checklists.
+>
+> **Principe structurant de la V0.5** : un voyage est un **événement enrichi**,
+> pas un système parallèle. Chaque voyage possède un événement porteur de
+> catégorie « voyage » — il apparaît donc naturellement dans l'agenda, et les
+> modules de la V0.3/V0.4 (tâches, participants, dépenses, objets, documents)
+> sont réutilisés tels quels, sans aucune duplication.
 
 ---
 
@@ -237,6 +244,116 @@ entier en mémoire.
 
 ---
 
+## Nouveautés de la V0.5
+
+### Un voyage est un événement enrichi
+
+Chaque `Trip` porte un `eventId` qui pointe vers un `AppEvent` de catégorie
+« voyage ». Conséquences directes, et c'est tout l'intérêt du choix :
+
+- le voyage apparaît **dans l'agenda et sur l'accueil** sans code spécifique ;
+- les modules de la V0.3/V0.4 se rattachent à l'**événement porteur** et sont
+  donc réutilisés tels quels : tâches, participants, dépenses, objets, documents ;
+- titre, dates, destination, statut et budget sont **recopiés sur l'événement** à
+  chaque écriture, dans une transaction — un voyage modifié ne peut pas devenir
+  incohérent dans l'agenda.
+
+Créer un voyage crée son événement ; le supprimer supprime l'événement et tout
+son contenu en cascade.
+
+### Itinéraire
+
+Suite ordonnée de lieux, réordonnable par flèches. Une étape peut n'être qu'une
+intention : les dates sont **facultatives**, et l'ordre est manuel plutôt que
+déduit des dates — sinon une étape sans date n'aurait pas de place. Les
+chevauchements de périodes sont signalés, jamais bloqués.
+
+### Programme jour par jour
+
+Les journées sont **générées** à partir des dates du voyage : la trame existe
+avant toute saisie, et une journée vide reste visible — c'est justement
+l'information utile quand on prépare. Chaque activité porte une catégorie, un
+horaire facultatif, un coût prévu/réel, un statut et un indicateur
+« réservation nécessaire ».
+
+La journée est stockée comme une chaîne `AAAA-MM-JJ`, pas comme un instant :
+déplacer une activité vers une autre date ne dépend d'aucun fuseau horaire, et
+le regroupement devient une simple égalité de clé. Si les dates du voyage sont
+raccourcies, les activités devenues hors période sont affichées à part plutôt
+que perdues silencieusement.
+
+### Transports
+
+Aller, retour et déplacements sur place : mode, trajet, horaires, compagnie,
+référence, prix prévu/payé et statut de réservation. Les billets se rattachent
+directement au trajet concerné.
+
+### Hébergements
+
+Le point clé est la **couverture des nuits**. Une nuit va du jour J au jour J+1 :
+un séjour du 2 au 5 couvre les nuits du 2, 3 et 4 — pas celle du 5, jour du
+départ. Les nuits sans hébergement sont listées explicitement et proposent un
+ajout en un geste : c'est l'oubli le plus coûteux d'un voyage.
+
+### Budget consolidé, sans double compte
+
+Le budget d'un voyage agrège quatre sources, **chacune comptée une seule fois** :
+
+| Source | Montant retenu |
+| --- | --- |
+| Transports | prix payé s'il existe, sinon prix prévu |
+| Hébergements | idem |
+| Activités | idem |
+| Dépenses libres | montant saisi |
+| Objets à ramener | uniquement si « compter dans le budget » est coché |
+
+Deux règles rendent le total fiable : un élément **annulé** ne compte pas, et
+pour un même élément on retient le réel **ou** le prévisionnel, jamais les deux.
+Le détail par source est affiché sous le total, pour qu'il reste vérifiable à
+l'œil. Aucun total n'est stocké : tout est recalculé à la lecture.
+
+### Checklist de bagages
+
+Réutilise le module « objets à ramener » de la V0.3 plutôt que d'introduire une
+table concurrente. La valeur ajoutée tient dans six **modèles pré-remplis** —
+papiers, vêtements, hygiène, électronique, santé, autres. Un modèle peut être
+appliqué plusieurs fois : les libellés déjà présents ne sont pas dupliqués.
+
+### Documents rattachés à un élément
+
+Un billet peut être associé à un **trajet, un hébergement, une activité ou une
+étape** via une table de liaison `documentLinks`. Table de liaison plutôt que
+champ sur le document : un même billet peut concerner plusieurs éléments, et
+**retirer une association ne touche jamais au fichier**.
+
+La bibliothèque de documents se filtre par voyage : elle réunit les documents de
+l'événement porteur et ceux liés à l'un de ses éléments.
+
+### Accueil et agenda
+
+- **Accueil** : carte « prochain voyage » avec compte à rebours, avancement des
+  préparatifs, prochain trajet, nuits sans hébergement, tâches urgentes et
+  documents importants.
+- **Agenda** : la période du voyage vient de l'événement porteur ; la journée
+  sélectionnée affiche en plus les trajets du jour, l'hébergement de la nuit et
+  les principales activités.
+
+### Liste des voyages
+
+Prochain voyage mis en avant, avancement global des préparatifs, recherche,
+filtres par période et par statut, et cartes riches (préparation, transports,
+hébergements, activités, budget, documents, nuits non couvertes).
+
+### Suppression d'un voyage
+
+La confirmation détaille ce qui va disparaître (étapes, activités, transports,
+hébergements, tâches, dépenses) et **demande explicitement** ce qu'il advient des
+documents : les supprimer avec leurs fichiers, ou seulement retirer
+l'association. Le défaut est **conserver** — effacer silencieusement des fichiers
+importés par l'utilisateur serait la pire des surprises.
+
+---
+
 ## Structure d'un événement
 
 ```ts
@@ -268,6 +385,44 @@ correspond au tri chronologique.
 
 ---
 
+## Structure d'un voyage
+
+```ts
+interface Trip {
+  id: string
+  eventId: string            // événement porteur — jamais absent depuis la V0.5
+  title: string
+  destination: string
+  origin?: string
+  startDate: string          // ISO 8601
+  endDate: string            // ISO 8601
+  status: 'idee' | 'preparation' | 'reserve' | 'en-cours' | 'termine' | 'annule'
+  description?: string
+  imageKey?: string
+  budget?: number            // miroir de AppEvent.budget
+  createdAt: string
+  updatedAt: string
+}
+```
+
+Le contenu du voyage vit dans quatre tables reliées par `tripId`, plus une table
+de liaison pour les documents :
+
+| Table | Rôle | Particularité |
+| --- | --- | --- |
+| `tripStages` | étapes de l'itinéraire | dates facultatives, `order` manuel |
+| `tripActivities` | programme | `day` est une chaîne `AAAA-MM-JJ` |
+| `tripTransports` | trajets | `departure` en ISO complet (horaires précis) |
+| `tripStays` | hébergements | `checkIn`/`checkOut` en `AAAA-MM-JJ` |
+| `documentLinks` | billets rattachés | table de liaison, jamais le fichier |
+
+Le mélange assumé de `AAAA-MM-JJ` et d'ISO complet suit l'usage : une activité se
+range dans une **journée**, un vol part à une **heure**. Stocker la journée comme
+une chaîne rend le regroupement et le déplacement indépendants de tout fuseau
+horaire.
+
+---
+
 ## Routes
 
 | Chemin                          | Écran                                  |
@@ -282,9 +437,15 @@ correspond au tri chronologique.
 | `/evenements/nouveau?jour=DATE` | Création à une date pré-sélectionnée   |
 | `/evenements/:id`               | Fiche détaillée                        |
 | `/evenements/:id/modifier`      | Modification                           |
-| `/voyages`                      | Voyages (inchangé depuis la V0.1)      |
+| `/voyages`                      | Voyages : liste, recherche, filtres    |
+| `/voyages?statut=preparation`   | Liste filtrée par statut               |
+| `/voyages?quand=passes`         | Voyages passés                         |
+| `/voyages/nouveau`              | Création d'un voyage                   |
+| `/voyages/:id`                  | Fiche voyage (9 sections)              |
+| `/voyages/:id/modifier`         | Modification                           |
 | `/documents`                    | Bibliothèque de documents              |
-| `/documents?categorie=billet`   | Bibliothèque filtrée                   |
+| `/documents?categorie=billet`   | Bibliothèque filtrée par catégorie     |
+| `/documents?voyage=ID`          | Documents d'un voyage                  |
 | `/documents/:id`                | Fiche document                         |
 | `/parametres`                   | Profil, affichage, sauvegarde, à propos |
 | `/parametres#sauvegarde`        | Section Sauvegarde (export / import)   |
@@ -297,6 +458,30 @@ partagé fonctionne toujours**, y compris depuis un sous-chemin.
 ---
 
 ## Migration de la base
+
+### v4 → v5 (V0.5)
+
+Cinq tables sont ajoutées — `tripStages`, `tripActivities`, `tripTransports`,
+`tripStays`, `documentLinks` — et la table `trips` gagne un index `eventId`.
+
+| V0.1 – V0.4 | V0.5 |
+| --- | --- |
+| `status: 'planifie'` | → `preparation` |
+| `status: 'confirme'` | → `reserve` |
+| `image: 'illustration:mer'` | → `imageKey: 'mer'` |
+| `notes` | → `description` |
+| *(absent)* | → `eventId`, `origin` |
+
+**Le point délicat est `eventId`** : un voyage hérité n'en a pas, et sans
+événement porteur il resterait invisible dans l'agenda et incapable de porter le
+moindre module. La migration en crée donc un pour chaque voyage qui en manque —
+sauf si un événement « voyage » pointe déjà vers lui (cas des données de
+démonstration), auquel cas il est réutilisé plutôt que dupliqué.
+
+Cette règle vit dans `ensureTripEvents` (`src/utils/tripSync.ts`), **pure et
+idempotente**, volontairement hors de Dexie : la migration de schéma **et**
+l'import de sauvegarde en ont besoin, les deux doivent produire exactement le
+même résultat, et elle se teste sans base.
 
 ### v3 → v4 (V0.4)
 
@@ -352,7 +537,17 @@ et jamais recréées ensuite : si l'utilisateur les supprime, elles ne reviennen
 
 ## Format de sauvegarde
 
-Le format passe en **version 4** et l'export devient une **archive ZIP** :
+Le format passe en **version 5**. L'archive ZIP de la V0.4 est conservée telle
+quelle ; le JSON gagne cinq collections : `tripStages`, `tripActivities`,
+`tripTransports`, `tripStays` et `documentLinks`.
+
+À l'import, `ensureTripEvents` **rétablit le lien voyage ↔ événement porteur**
+avant toute écriture : une sauvegarde v1 à v4 contient des voyages sans
+`eventId`, ils seraient sinon restaurés invisibles. Les liaisons de documents
+pointant vers un document disparu sont écartées — une association orpheline
+n'affiche rien et fausse les comptes.
+
+Structure de l'archive :
 
 ```
 mes-aventures-sauvegarde-2026-07-29.zip
@@ -370,7 +565,7 @@ dans `src/services/zip.ts` : le contenu est déjà du PDF et du JPEG compressés
 deflater ne gagnerait quasiment rien tout en coûtant du CPU sur un iPhone. Le
 résultat reste une archive ZIP standard, ouvrable par l'app Fichiers d'iOS.
 
-**Les sauvegardes v1, v2 et v3 (JSON) restent importables** : le format est
+**Les sauvegardes v1 à v4 restent importables** : le format est
 détecté par la signature du fichier, les événements et documents sont migrés à
 la volée, et les collections absentes deviennent des tableaux vides.
 
@@ -420,20 +615,24 @@ src/
 ├── config/                     # constantes, raccourcis, correspondances visuelles
 ├── models/                     # types (event, trip, reminder, document, settings, backup)
 ├── db/
-│   ├── database.ts             # schéma Dexie versionné + migrateEventToV2
+│   ├── database.ts             # schéma Dexie versionné (v1 → v5) + migrations
 │   ├── seed.ts / seedData.ts   # données de démonstration (premier lancement)
 │   └── repositories/           # accès aux données — une façade par table
 ├── services/                   # export ZIP, import, validation, zip.ts, erreurs
 ├── hooks/                      # useLiveData, useDashboard, useDatabaseBootstrap
 ├── navigation/                 # routes, barre inférieure, coquille
-├── pages/                      # une page par écran (dont EventFormPage, EventDetailPage)
+├── pages/                      # une page par écran (dont TripDetailPage, TripFormPage)
 ├── components/
 │   ├── ui/                     # briques réutilisables (Card, Button, Alert, PageHeader…)
 │   ├── icons/                  # jeu d'icônes et illustrations SVG
-│   ├── agenda/                 # MonthCalendar
+│   ├── agenda/                 # MonthCalendar, TripDayDetails
 │   ├── events/                 # EventCard, EventForm, ModuleSection,
 │   │                           #   TasksSection, ParticipantsSection,
 │   │                           #   BudgetSection, ItemsSection
+│   ├── trips/                  # TripCard, TripForm, StagesSection,
+│   │                           #   ProgramSection, TransportsSection,
+│   │                           #   StaysSection, TripBudgetSection,
+│   │                           #   TripChecklistSection, LinkedDocuments
 │   ├── settings/               # BackupSection
 │   ├── documents/              # DocumentCard, DocumentSheet
 │   └── home/                   # sections du tableau de bord
@@ -442,6 +641,9 @@ src/
     ├── eventRules.ts           # règles métier pures (passé, tri, chevauchement, recherche)
     ├── taskRules.ts            # état, progression, retard, réordonnancement
     ├── budgetRules.ts          # totaux, reste, écart, répartition, dépassement
+    ├── tripRules.ts            # journées, nuits, cohérence des dates, budget voyage
+    ├── tripSync.ts             # voyage ↔ événement porteur (migration + import)
+    ├── tripValidation.ts       # validation du formulaire de voyage
     ├── fileRules.ts            # validation des fichiers, types MIME, tailles
     ├── eventValidation.ts      # validation du formulaire
     ├── eventForm.ts            # valeurs initiales (création / édition / duplication)
@@ -458,7 +660,7 @@ puis par les hooks. La logique métier vit dans `utils/`, pure et testable.
 ## Procédure de test
 
 ```bash
-npm test        # 140 tests — règles métier, budget, tâches, fichiers, ZIP, migrations
+npm test        # 212 tests — règles métier, budget, tâches, fichiers, ZIP, migrations, voyages
 npx tsc -b      # types
 npm run build   # build de production
 ```
@@ -485,7 +687,29 @@ Les tests automatisés couvrent :
   tronquées ou sans répertoire central, vecteurs de test CRC-32 de référence ;
 - **manifeste de sauvegarde** — correspondances document/fichier, entrées
   incomplètes ignorées sans faire échouer l'import, migration `kind` → `category`
-  et préservation des associations.
+  et préservation des associations ;
+- **journées et nuits d'un voyage** — génération bornes comprises, aller-retour
+  dans la journée, fin antérieure au début, date invalide, passage d'année,
+  garde-fou sur une saisie aberrante, couverture des nuits par les hébergements
+  et exclusion des séjours annulés ;
+- **cohérence des dates** — fin avant début bloquée, débordement de la période du
+  voyage seulement averti, chevauchement d'étapes détecté ;
+- **budget de voyage** — agrégation des quatre sources, règle anti-double-compte
+  (réel **ou** prévisionnel, jamais les deux), exclusion des éléments annulés,
+  objets comptés seulement si demandé, dépassement et écart, absence
+  d'enveloppe, détail par source sans ligne vide ;
+- **synchronisation voyage ↔ événement** — création de l'événement porteur
+  manquant, réutilisation d'un événement existant, respect d'un `eventId` valide,
+  recréation si l'événement a disparu, idempotence, non-mutation des données
+  d'origine ;
+- **migration des voyages v1–v4** — anciens statuts, `image` → `imageKey`,
+  `notes` → `description`, chaînes vides supprimées, idempotence ;
+- **sauvegarde v5** — restauration du contenu d'itinéraire, repli sur les
+  énumérations inconnues, refus d'une activité sans journée exploitable ou d'un
+  élément orphelin, import d'une sauvegarde v4 sans contenu de voyage ;
+- **formulaire de voyage** — champs obligatoires, retour antérieur au départ,
+  budget négatif ou illisible, virgule décimale, champs effaçables et
+  aller-retour formulaire → voyage → formulaire.
 
 ### Parcours manuel recommandé
 
@@ -500,7 +724,18 @@ Les tests automatisés couvrent :
 7. tester recherche et filtres combinés ;
 8. exporter, puis réimporter le fichier ;
 9. importer une sauvegarde V0.1 (migration) et un fichier invalide (refus propre) ;
-10. couper le réseau et relancer l'application.
+10. créer un voyage, vérifier qu'il apparaît dans l'agenda et sur l'accueil ;
+11. ajouter un trajet, un hébergement partiel et quelques activités ; vérifier le
+    signalement des nuits sans hébergement et le budget consolidé ;
+12. déplacer une activité vers une autre journée, réordonner une journée ;
+13. appliquer un modèle de checklist deux fois (aucun doublon attendu) ;
+14. rattacher un document à un trajet, puis le détacher (le fichier doit rester
+    dans la bibliothèque) ;
+15. supprimer le voyage en choisissant « conserver les documents », puis vérifier
+    que l'événement porteur a bien disparu de l'agenda ;
+16. exporter puis réimporter : itinéraire, budget et associations doivent être
+    identiques ;
+17. couper le réseau et relancer l'application.
 
 ---
 
@@ -509,9 +744,18 @@ Les tests automatisés couvrent :
 - L'installation sur un **iPhone physique** n'a pas pu être testée (environnement
   de développement sans iOS). La configuration PWA est conforme et validée en
   émulation, mais l'ajout à l'écran d'accueil via Safari reste à confirmer.
-- La page **Voyages** reste celle de la V0.1 : elle lit la table `trips` héritée,
-  qui n'est pas éditable. Les voyages se saisissent pour l'instant comme des
-  événements de catégorie « Voyage ».
+- Le **réordonnancement** des étapes et des activités se fait par flèches
+  haut/bas, pas par glisser-déposer : plus fiable au pouce et accessible au
+  clavier.
+- Un voyage se saisit **à la journée** : pas d'heure de départ ni de retour sur
+  le voyage lui-même. Les horaires précis vivent sur les transports, là où ils
+  ont un sens.
+- Les **étapes** n'alimentent pas le budget : elles décrivent un parcours, pas
+  une dépense. Ce sont les transports, hébergements et activités qui portent les
+  montants.
+- Le programme est borné à **731 journées** (deux ans) : au-delà, la saisie
+  relève de l'erreur, et générer des milliers de journées ne rendrait service à
+  personne.
 - La **prévisualisation des PDF** dépend du navigateur. Safari iOS n'affiche pas
   toujours un PDF en `<object>` : un repli propose alors l'ouverture ou le
   téléchargement, sans jamais faire planter l'application.
@@ -535,22 +779,23 @@ Les tests automatisés couvrent :
 
 ---
 
-## Hors périmètre de la V0.2 (architecture préparée)
+## Hors périmètre (architecture préparée)
 
 Synchronisation cloud · partage entre utilisateurs · envoi par e-mail · OCR ou
 lecture automatique du contenu · modification interne des PDF · cartes et
-géolocalisation · notifications système · gestion avancée des voyages.
+géolocalisation · notifications système · réservation en ligne · import
+automatique depuis un e-mail de confirmation.
 
 ---
 
-## Prévu pour la V0.5
+## Prévu pour la V0.6
 
-- Gestionnaire de voyage complet : itinéraire, hébergements, étapes.
 - Modification du prénom et préférences d'affichage dans les Paramètres.
-- Budget consolidé sur plusieurs événements, et vue budget globale.
+- Budget consolidé sur plusieurs voyages, et vue budget globale.
 - Remplacement du fichier d'un document existant.
 - Événements récurrents et rappels.
 - Vue semaine dans l'agenda.
+- Glisser-déposer pour le programme et l'itinéraire.
 
 ---
 

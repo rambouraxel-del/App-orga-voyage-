@@ -30,20 +30,47 @@ export function BackupSection() {
   const [progress, setProgress] = useState<ExportProgress | null>(null)
 
   const { data, loading, error } = useLiveData(async () => {
-    const [settings, events, tasks, participants, items, expenses, documents, allDocuments] =
-      await Promise.all([
-        settingsRepository.get(),
-        db.events.count(),
-        db.tasks.count(),
-        db.participants.count(),
-        db.items.count(),
-        db.expenses.count(),
-        db.documents.count(),
-        db.documents.toArray(),
-      ])
+    const [
+      settings,
+      events,
+      trips,
+      tasks,
+      participants,
+      items,
+      expenses,
+      documents,
+      allDocuments,
+      stages,
+      activities,
+      transports,
+      stays,
+    ] = await Promise.all([
+      settingsRepository.get(),
+      db.events.count(),
+      db.trips.count(),
+      db.tasks.count(),
+      db.participants.count(),
+      db.items.count(),
+      db.expenses.count(),
+      db.documents.count(),
+      db.documents.toArray(),
+      db.tripStages.count(),
+      db.tripActivities.count(),
+      db.tripTransports.count(),
+      db.tripStays.count(),
+    ])
     return {
       settings,
-      counts: { events, tasks, participants, items, expenses, documents },
+      counts: {
+        events,
+        trips,
+        tasks,
+        participants,
+        items,
+        expenses,
+        documents,
+        tripContent: stages + activities + transports + stays,
+      },
       filesSize: allDocuments.reduce((sum, doc) => sum + (doc.size || 0), 0),
     }
   })
@@ -137,6 +164,14 @@ export function BackupSection() {
             <div className="backup-stat">
               <p className="backup-stat__value">{data.counts.events}</p>
               <p className="backup-stat__label">Evenements</p>
+            </div>
+            <div className="backup-stat">
+              <p className="backup-stat__value">{data.counts.trips}</p>
+              <p className="backup-stat__label">Voyages</p>
+            </div>
+            <div className="backup-stat">
+              <p className="backup-stat__value">{data.counts.tripContent}</p>
+              <p className="backup-stat__label">Itineraire</p>
             </div>
             <div className="backup-stat">
               <p className="backup-stat__value">{data.counts.tasks}</p>
@@ -254,6 +289,10 @@ export function BackupSection() {
               <dd>v{pendingImport.appVersion}</dd>
               <dt>Evenements</dt>
               <dd>{pendingImport.counts.events}</dd>
+              <dt>Voyages</dt>
+              <dd>{pendingImport.counts.trips}</dd>
+              <dt>Itineraire</dt>
+              <dd>{pendingImport.counts.tripContent}</dd>
               <dt>Taches</dt>
               <dd>{pendingImport.counts.tasks}</dd>
               <dt>Participants</dt>

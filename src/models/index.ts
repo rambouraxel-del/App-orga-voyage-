@@ -1,6 +1,7 @@
 export * from './common'
 export * from './event'
 export * from './trip'
+export * from './tripPlan'
 export * from './task'
 export * from './participant'
 export * from './item'

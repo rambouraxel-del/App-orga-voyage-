@@ -5,6 +5,10 @@ import type {
   Reminder,
   TravelDocument,
   Trip,
+  TripActivity,
+  TripStage,
+  TripStay,
+  TripTransport,
 } from '@/models'
 import { SETTINGS_KEY } from '@/models'
 import { addDays, atTime, nowIso } from '@/utils/date'
@@ -20,9 +24,20 @@ import { createId } from '@/utils/id'
 export interface SeedPayload {
   events: AppEvent[]
   trips: Trip[]
+  tripStages: TripStage[]
+  tripActivities: TripActivity[]
+  tripTransports: TripTransport[]
+  tripStays: TripStay[]
   reminders: Reminder[]
   documents: TravelDocument[]
   settings: AppSettings
+}
+
+/** `AAAA-MM-JJ` local — cle de journee des activites et des nuits. */
+const dayOf = (iso: string): string => {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 export function buildSeedData(displayName = 'Axel'): SeedPayload {
@@ -31,29 +46,37 @@ export function buildSeedData(displayName = 'Axel'): SeedPayload {
 
   const niceTripId = createId()
   const lisbonneTripId = createId()
+  // Les identifiants d'evenement sont crees d'abord : chaque voyage doit
+  // pointer vers son evenement porteur des la creation.
+  const niceEventId = createId()
+  const lisbonneEventId = createId()
 
   const trips: Trip[] = [
     {
       id: niceTripId,
+      eventId: niceEventId,
       title: 'Week-end a Nice',
       destination: 'Nice, Cote d’Azur',
+      origin: 'Paris',
       startDate: atTime(addDays(now, 5), 8, 30),
       endDate: atTime(addDays(now, 7), 19, 0),
-      status: 'confirme',
-      image: 'illustration:mer',
-      notes: 'Train depuis Paris, hotel a deux pas de la promenade des Anglais.',
+      status: 'reserve',
+      imageKey: 'mer',
+      description: 'Train depuis Paris, hotel a deux pas de la promenade des Anglais.',
       budget: 420,
       ...stamps,
     },
     {
       id: lisbonneTripId,
+      eventId: lisbonneEventId,
       title: 'Escapade a Lisbonne',
       destination: 'Lisbonne, Portugal',
+      origin: 'Paris',
       startDate: atTime(addDays(now, 63), 6, 45),
       endDate: atTime(addDays(now, 68), 22, 15),
-      status: 'planifie',
-      image: 'illustration:ville',
-      notes: 'Vol a reserver, quartier de l’Alfama a privilegier.',
+      status: 'preparation',
+      imageKey: 'ville',
+      description: 'Vol a reserver, quartier de l’Alfama a privilegier.',
       budget: 780,
       ...stamps,
     },
@@ -61,9 +84,9 @@ export function buildSeedData(displayName = 'Axel'): SeedPayload {
 
   const events: AppEvent[] = [
     {
-      id: createId(),
+      id: niceEventId,
       title: 'Week-end a Nice',
-      category: 'weekend',
+      category: 'voyage',
       startDate: atTime(addDays(now, 5), 8, 30),
       endDate: atTime(addDays(now, 7), 19, 0),
       allDay: false,
@@ -135,7 +158,7 @@ export function buildSeedData(displayName = 'Axel'): SeedPayload {
       ...stamps,
     },
     {
-      id: createId(),
+      id: lisbonneEventId,
       title: 'Escapade a Lisbonne',
       category: 'voyage',
       startDate: atTime(addDays(now, 63), 6, 45),
@@ -212,6 +235,97 @@ export function buildSeedData(displayName = 'Axel'): SeedPayload {
   // son etat d'accueil et son bouton d'ajout.
   const documents: TravelDocument[] = []
 
+  // --- V0.5 : un itineraire minimal pour le week-end a Nice ---------------
+  // Juste assez pour que les sections Transports, Hebergements et Programme
+  // ne s'ouvrent pas vides au premier lancement, sans transformer la demo en
+  // voyage entierement pre-rempli.
+  const niceDay1 = dayOf(addDays(now, 5))
+  const niceDay3 = dayOf(addDays(now, 7))
+
+  const tripTransports: TripTransport[] = [
+    {
+      id: createId(),
+      tripId: niceTripId,
+      mode: 'train',
+      from: 'Paris Gare de Lyon',
+      to: 'Nice-Ville',
+      departure: atTime(addDays(now, 5), 8, 30),
+      arrival: atTime(addDays(now, 5), 14, 15),
+      company: 'TGV inOui',
+      plannedPrice: 89,
+      status: 'reserve',
+      ...stamps,
+    },
+    {
+      id: createId(),
+      tripId: niceTripId,
+      mode: 'train',
+      from: 'Nice-Ville',
+      to: 'Paris Gare de Lyon',
+      departure: atTime(addDays(now, 7), 19, 0),
+      arrival: atTime(addDays(now, 8), 0, 45),
+      company: 'TGV inOui',
+      plannedPrice: 89,
+      status: 'reserve',
+      ...stamps,
+    },
+  ]
+
+  const tripStays: TripStay[] = [
+    {
+      id: createId(),
+      tripId: niceTripId,
+      name: 'Hotel de la Promenade',
+      kind: 'hotel',
+      checkIn: niceDay1,
+      checkOut: niceDay3,
+      plannedPrice: 180,
+      status: 'reserve',
+      ...stamps,
+    },
+  ]
+
+  const tripActivities: TripActivity[] = [
+    {
+      id: createId(),
+      tripId: niceTripId,
+      day: niceDay1,
+      time: '19:00',
+      title: 'Diner dans le Vieux-Nice',
+      category: 'restaurant',
+      bookingRequired: false,
+      status: 'prevu',
+      order: 0,
+      ...stamps,
+    },
+    {
+      id: createId(),
+      tripId: niceTripId,
+      day: dayOf(addDays(now, 6)),
+      time: '10:00',
+      title: 'Colline du Chateau',
+      place: 'Nice',
+      category: 'visite',
+      bookingRequired: false,
+      status: 'idee',
+      order: 0,
+      ...stamps,
+    },
+  ]
+
+  const tripStages: TripStage[] = [
+    {
+      id: createId(),
+      tripId: niceTripId,
+      place: 'Nice',
+      startDate: atTime(addDays(now, 5), 14, 15),
+      endDate: atTime(addDays(now, 7), 19, 0),
+      status: 'reserve',
+      order: 0,
+      ...stamps,
+    },
+  ]
+
   const settings: AppSettings = {
     key: SETTINGS_KEY,
     displayName,
@@ -221,5 +335,15 @@ export function buildSeedData(displayName = 'Axel'): SeedPayload {
     currency: 'EUR',
   }
 
-  return { events, trips, reminders, documents, settings }
+  return {
+    events,
+    trips,
+    tripStages,
+    tripActivities,
+    tripTransports,
+    tripStays,
+    reminders,
+    documents,
+    settings,
+  }
 }

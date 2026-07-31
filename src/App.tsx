@@ -13,6 +13,8 @@ import { EventFormPage } from '@/pages/EventFormPage'
 import { EventsPage } from '@/pages/EventsPage'
 import { HomePage } from '@/pages/HomePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { TripDetailPage } from '@/pages/TripDetailPage'
+import { TripFormPage } from '@/pages/TripFormPage'
 import { TripsPage } from '@/pages/TripsPage'
 
 export default function App() {
@@ -64,6 +66,9 @@ export default function App() {
             <Route path={ROUTES.eventDetail} element={<EventDetailPage />} />
             <Route path={ROUTES.eventEdit} element={<EventFormPage />} />
             <Route path={ROUTES.trips} element={<TripsPage />} />
+            <Route path={ROUTES.tripNew} element={<TripFormPage />} />
+            <Route path={ROUTES.tripDetail} element={<TripDetailPage />} />
+            <Route path={ROUTES.tripEdit} element={<TripFormPage />} />
             <Route path={ROUTES.documents} element={<DocumentsPage />} />
             <Route path={ROUTES.documentDetail} element={<DocumentDetailPage />} />
             <Route path={ROUTES.settings} element={<SettingsPage />} />

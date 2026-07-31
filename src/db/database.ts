@@ -4,6 +4,11 @@ import type {
   AppEvent,
   AppSettings,
   DocumentFile,
+  DocumentLink,
+  TripActivity,
+  TripStage,
+  TripStay,
+  TripTransport,
   EventItem,
   EventTask,
   Expense,
@@ -12,7 +17,16 @@ import type {
   TravelDocument,
   Trip,
 } from '@/models'
-import { LEGACY_KIND_TO_CATEGORY, LEGACY_STATUS_TO_STATUS, LEGACY_TYPE_TO_CATEGORY } from '@/models'
+import {
+  LEGACY_KIND_TO_CATEGORY,
+  LEGACY_STATUS_TO_STATUS,
+  LEGACY_TYPE_TO_CATEGORY,
+} from '@/models'
+import { ensureTripEvents } from '@/utils/tripSync'
+
+// Reexportes ici : `@/db/database` reste le point d'entree des migrations,
+// meme depuis que la regle voyage <-> evenement vit dans `utils/tripSync`.
+export { TRIP_TO_EVENT_STATUS, ensureTripEvents, migrateTripToV5 } from '@/utils/tripSync'
 
 /**
  * Base locale IndexedDB.
@@ -25,6 +39,11 @@ import { LEGACY_KIND_TO_CATEGORY, LEGACY_STATUS_TO_STATUS, LEGACY_TYPE_TO_CATEGO
 export class AppDatabase extends Dexie {
   events!: Table<AppEvent, string>
   trips!: Table<Trip, string>
+  tripStages!: Table<TripStage, string>
+  tripActivities!: Table<TripActivity, string>
+  tripTransports!: Table<TripTransport, string>
+  tripStays!: Table<TripStay, string>
+  documentLinks!: Table<DocumentLink, string>
   tasks!: Table<EventTask, string>
   participants!: Table<Participant, string>
   items!: Table<EventItem, string>
@@ -107,6 +126,41 @@ export class AppDatabase extends Dexie {
           .modify((document: Record<string, unknown>) => {
             migrateDocumentToV4(document)
           })
+      })
+
+    // --- v5 (V0.5) -------------------------------------------------------
+    // Les voyages deviennent des evenements enrichis : ajout de `eventId`, des
+    // tables d'itineraire et de la table de liaison des documents.
+    this.version(5)
+      .stores({
+        events: 'id, startDate, endDate, category, status, tripId',
+        trips: 'id, eventId, startDate, endDate, status',
+        tripStages: 'id, tripId, order, startDate',
+        tripActivities: 'id, tripId, day, order, status',
+        tripTransports: 'id, tripId, departure, mode, status',
+        tripStays: 'id, tripId, checkIn, checkOut, status',
+        documentLinks: 'id, documentId, targetId, targetType',
+        tasks: 'id, eventId, done, dueDate, order',
+        participants: 'id, eventId, status',
+        items: 'id, eventId, kind, status',
+        expenses: 'id, eventId, category, paid, date',
+        reminders: 'id, category, done, eventId, tripId',
+        documents: 'id, category, usefulDate, eventId, archived, tripId',
+        documentFiles: 'id',
+        settings: 'key',
+      })
+      .upgrade(async (tx) => {
+        // Chaque voyage herite doit recevoir un evenement porteur, sinon il
+        // resterait invisible dans l'agenda et sans modules rattachables.
+        // La regle vit dans `ensureTripEvents` : l'import de sauvegarde
+        // applique exactement la meme, et elle se teste sans base.
+        const rawTrips = (await tx.table('trips').toArray()) as Array<Record<string, unknown>>
+        const events = (await tx.table('events').toArray()) as AppEvent[]
+
+        const { trips, createdEvents } = ensureTripEvents(rawTrips, events)
+
+        if (createdEvents.length > 0) await tx.table('events').bulkPut(createdEvents)
+        await tx.table('trips').bulkPut(trips)
       })
   }
 }

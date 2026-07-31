@@ -38,10 +38,11 @@ export const EVENT_STATUS_TONES: Record<EventStatus, BadgeTone> = {
 
 export const TRIP_STATUS_TONES: Record<TripStatus, BadgeTone> = {
   idee: 'lavender',
-  planifie: 'sky',
-  confirme: 'sage',
+  preparation: 'sky',
+  reserve: 'sage',
   'en-cours': 'apricot',
   termine: 'neutral',
+  annule: 'blush',
 }
 
 export const DOCUMENT_VISUALS: Record<DocumentCategory, { icon: IconName; tone: ChipTone }> = {

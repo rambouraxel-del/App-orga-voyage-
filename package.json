@@ -1,7 +1,7 @@
 {
   "name": "mes-aventures",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "description": "Application personnelle d'organisation des sorties, soirees, evenements, week-ends et voyages (PWA locale).",
   "scripts": {
